@@ -6,9 +6,12 @@ dependencies:
   - python=3.8
   - bokeh>=2.3.1
   - ipywidgets
+  - faiss
   - pip
   - pip:
       - vectorian>=0.8.0.dev7
       - sentence-transformers>=0.4
       - jupyter_bokeh>=3.0.0
       - opentsne>=0.6.0
+      - spacy>=3.0.0,<4.0.0
+      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web_sm
