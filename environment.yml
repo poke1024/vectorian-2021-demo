@@ -9,7 +9,7 @@ dependencies:
   - faiss
   - pip
   - pip:
-      - vectorian>=0.8.0.dev7
+      - vectorian>=0.8.0.dev8
       - sentence-transformers>=0.4
       - jupyter_bokeh>=3.0.0
       - opentsne>=0.6.0
