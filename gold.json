@@ -1,0 +1,1142 @@
+[
+    {
+        "phrase": "to be or not to be",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_594e076e93ed4ccf",
+                "context": "Perchance I have not told you all that I think; for not to be when you have been, I think is the greatest misery that may be.",
+                "quote": "not to be when you have been, ",
+                "work": "Those Five Questions (Tusculanae) (1561)",
+                "author": "Marcus Tullius Cicero",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 3
+            },
+            {
+                "id": "ww_caf27ffdc954c844",
+                "context": "And which of both (thinkst thou) would Reason choose? To be made capable of endless bliss, With possibility the same to lose, And win a Hell, where all is quite amiss; Or not to Be at all, both those to miss: Sure, Reas'n the first would chose, because the last Is lowest hell, where highest horror is; For in Not-beings bottom, being fast, Ought would to worse than nought, unworn waste.",
+                "quote": "To be made capable of endless bliss,",
+                "work": "Mirum in Modum (1602)",
+                "author": "Sir John Davies of Hereford",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_66a52436edb537eb",
+                "context": "[Fidelio:] As also neither to touch, attempt, molest, or incumber any part, or parts whatsoever, either to be named or not to be named, either hidden or unhidden, either those that boldly look abroad, or those that dare not show their faces -[.]",
+                "quote": "to be named or not to be named,",
+                "work": "The Phoenix (1604)",
+                "author": "Thomas Middleton",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_a2a0ab6fbca2028d",
+                "context": "Killed by ingratitude here blessed within doth rest: To marry or not to marry which is best.",
+                "quote": "To marry or not to marry ",
+                "work": "Epigraph (1649)",
+                "author": "William Drummond",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_90d74567307f904e",
+                "context": "[Trainwell:] Not to be mad, sir, because she is melancholy. Not by taking a wrong course for her recovery to ruin her, and forfeit your judgment. Do you think that commands with chidings, threats or stripes, have power to work upon her, when she has neither will nor reason within herself to do, or not to do anything whatsoever?",
+                "quote": "to do, or not to do ",
+                "work": "The Northern Lass (1629)",
+                "author": "Richard Brome",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_669475d1f67eb920",
+                "context": "Now the gathering together of many men, who deliberate of what is to be done or not to be done for the common good of all men, is that which I call a council.",
+                "quote": "to be done or not to be done",
+                "work": "Philosophical Rudiments Concerning Government and Society (1651)",
+                "author": "Thomas Hobbes",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_19b54f39c1d245a7",
+                "context": "All the Actions, that we have any Idea of, reducing themselves, as has been said, to these two, viz. Thinking and Motion, so far as a Man has a power to think, or not to think: to move, or not to move, according to the preference or direction of his own mind, so far is a Man Free.",
+                "quote": "to think, or not to think: to move, or not to move, ",
+                "work": "An Essay Concerning Human Understanding (1689)",
+                "author": "John Locke",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 3
+            },
+            {
+                "id": "ww_295a0d9237083fe7",
+                "context": "Come now, thou that pretend'st to Act the Man, Something there needs must be, which ne'er began. As all were nothing once, So 'twould be now. A Number from bare Cyphers could not grow. Nothing's a Barren Womb. If that could breed, To be and not to be were well agreed.",
+                "quote": "To be and not to be ",
+                "work": "Dives and Lazarus (1685)",
+                "author": "John Mason (2)",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_971c475bea921406",
+                "context": "[King:] Tomorrow Guise is made Lieutenant-General, Why then tomorrow I no more am King; 'Tis time to push my slackened vengeance home, To be a King, or not to be at all; The Vow that manacled my Rage is loosed, Even Heaven is wearied with repeated Crimes, Till lightning flashes round to guard the Throne, And the curbed Thunder grumbles to be gone.",
+                "quote": "To be a King, or not to be at all;",
+                "work": "The Duke of Guise (1682)",
+                "author": "John Dryden, Nathaniel Lee",
+                "lexia": "to be or not to be",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            }
+        ],
+        "lexia": "to be or not to be"
+    },
+    {
+        "phrase": "sea of troubles",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_13c9cec7f15c0056",
+                "context": "[...] May so pass the waves of this troublesome world [...].",
+                "quote": "the waves of this troublesome world",
+                "work": "The Book of Common Prayer (1562)",
+                "author": "Anonymous",
+                "lexia": "sea of troubles",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_01d64039ef29add5",
+                "context": "So shall we passe through the dangers of the troublous sea of this world",
+                "quote": "the troublous sea ",
+                "work": "On the State of Matrimony (1571)",
+                "author": "John Jewel",
+                "lexia": "sea of troubles",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_22f51d85f231b2c7",
+                "context": "Yet went I to his Work the furthest way: And, travelled, as mine own occasions lay. Which he perceiving, sent a Storm that crest me; Made shipwreck of my hopes; my labour lost me; Befooled my wisdom; of much joy bereft me; Within the Sea of many troubles left me; And what with speed and ease I might have done At first; hath long with pain been lingered on.",
+                "quote": "Sea of many troubles",
+                "work": "Britain's Remembrancer (1628)",
+                "author": "George Wither",
+                "lexia": "sea of troubles",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_6cc712b23bbafc5e",
+                "context": "[Adrastus:] Thanks, good Clarathea , for thy remembrance; For I had almost lost my self in joyes unspeakable. My dear Letesia , (so I dare call the now) Hast thou made choice of any course to steer in this Same sea of trouble, mixt with joy?",
+                "quote": "sea of trouble, ",
+                "work": "The Loyal Lovers (1652)",
+                "author": "Cosmo Manuche",
+                "lexia": "sea of troubles",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_293034ae2a49b418",
+                "context": "These were from without The growing miseries, which Adam saw Already in part, though hid in gloomiest shade, To sorrow abandoned, but worse felt within, And in a troubled Sea of passion tossed, Thus to disburden sought with sad complaint [...].",
+                "quote": "Adam ",
+                "work": "Paradise Lost (1667)",
+                "author": "John Milton",
+                "lexia": "sea of troubles",
+                "formal_class": "Phrase",
+                "complexity": 3
+            }
+        ],
+        "lexia": "sea of troubles"
+    },
+    {
+        "phrase": "pampered jades of Asia",
+        "source": "Henry IV Part 2, 1597",
+        "matches": [
+            {
+                "id": "ww_4c352e527d12797b",
+                "context": "What? is it I that did behold the pampered Jades of Thrace With Mangers full of flesh of men on which they fed apace? Ist I that down at sight thereof their greasy Mangers threw, And both the fatted Jades themselves and eke their master slew?",
+                "quote": "the pampered Jades of Thrace",
+                "work": "Ovid's Metamorphoses (1567)",
+                "author": "Arthur Golding",
+                "lexia": "pampered jades of Asia",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_f38739f4c2391f47",
+                "context": "[Tamburlaine:] [...] The headstrong jades of Thrace [...] Alcides tamed, That King Aegeus fed with human flesh, And made so wanton that they knew their strengths, Were not subdued with valour more divine Than you by this unconquered arm of mine.",
+                "quote": "headstrong jades of Thrace",
+                "work": "Tamburlaine Part 2 (1587)",
+                "author": "Christopher Marlowe",
+                "lexia": "pampered jades of Asia",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_b0913df56f856f27",
+                "context": "[Dorothy:] God's precious you young contagious whore must you be ticing? and is your flesh so wrank sir, that two may live upon't? I am glad to hear your curtail grown so lusty; he was dry foundered t'other day, weehee my pampered jade of Asia.",
+                "quote": "my pampered jade of Asia.",
+                "work": "The Coxcomb (1609)",
+                "author": "Francis Beaumont, John Fletcher",
+                "lexia": "pampered jades of Asia",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_7ecb8d5ef454d329",
+                "context": "Idle Bees gather no honey, and so become drones to rob the hive: thus are pampered jades unapt to travel, and lazy rogues unwilling to work.",
+                "quote": "pampered jades unapt to travel, ",
+                "work": "The Rich Cabinet, or Galateo (1616)",
+                "author": "T. G.",
+                "lexia": "pampered jades of Asia",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_8c5990fb7392c89b",
+                "context": "In what state I would lean over the Boot, and look, and pry if I saw any of my acquaintance, and then I would stand up, veiling my Bonnet, kissing my right claw, extending my arms as I had been swimming, with God save your Lordship, Worship, or how dost thou honest neighbour or good-fellow? in a word, the Coach made me think myself better than my betters that went on foot, and that I was but little inferior to Tamburlaine, being jolted thus in state by those pampered Jades of Belgia [...].",
+                "quote": "those pampered Jades of Belgia ",
+                "work": "The World Runs on Wheels (1623)",
+                "author": "John Taylor",
+                "lexia": "pampered jades of Asia",
+                "formal_class": "Phrase",
+                "complexity": 1
+            }
+        ],
+        "lexia": "pampered jades of Asia"
+    },
+    {
+        "phrase": "The rest is silence.",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_b7e69820855e7384",
+                "context": "Instead of legs, to both her sides stick fingers long and fine: The rest is belly.",
+                "quote": "The rest is belly.",
+                "work": "Ovid's Metamorphoses (1567)",
+                "author": "Arthur Golding",
+                "lexia": "the rest is silence",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_00ce5b9c822fbaca",
+                "context": "[Catechysius the Hermit:] Now all is but the action of the Mind, That rectified, the rest is all but wind.",
+                "quote": "the rest is all but wind.",
+                "work": "A Fig for Fortune (1596)",
+                "author": "Anthony Copley",
+                "lexia": "the rest is silence",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_3a359a22623b0162",
+                "context": "[Rodorigo:] Why should such plants as you are, pleasure's children That owe their blushing years to gentle objects, Tenderly bred, and brought up in all fulness, Desire the stubborn wars? [Marcantonio:] In those 'tis wonder, That make their ease their god, and not their honour: But noble General, my end is other, Desire of knowledge Sir, and hope of tying Discretion to my time, which only shows me, And not my years, a man, and makes that more. Which we call handsome, the rest is but boys' beauty, And with the boy consumed.",
+                "quote": "the rest is but boys' beauty, ",
+                "work": "Love's Pilgrimage (1616)",
+                "author": "Francis Beaumont, John Fletcher",
+                "lexia": "the rest is silence",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_d9ad6d0b3d1a5598",
+                "context": "And I dare assure you that it will not be the worse for you neither, if you never set your heart upon any other woman: for certainly a Passion under the degree of mine, will never content you: You may find more Beauty perhaps elswhere (tho' the time was when you found no fault with mine) but you shall never meet with so true a heart; and all the rest is nothing.",
+                "quote": "and all the rest is nothing.",
+                "work": "Five Love Letters from a Nun to a Cavalier (1678)",
+                "author": "Sir Roger L'Estrange",
+                "lexia": "the rest is silence",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_1bfaaa3ed70bb1ac",
+                "context": "Man! our great business and our aim, For whom we spread our fruitless snares, No sooner kindles the designing flame, But to the next bright object bears The Trophies of his conquest and our shame: Inconstancy's the good supreme The rest is airy Notion, empty Dream!",
+                "quote": "The rest is airy Notion, ",
+                "work": "To Alexis in Answer to His Poem against Fruition (1688)",
+                "author": "Aphra Behn",
+                "lexia": "the rest is silence",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            }
+        ],
+        "lexia": "the rest is silence"
+    },
+    {
+        "phrase": "an old man is twice a child",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_663f0143320cc310",
+                "context": "Old Men are twice Children. Bis pueri senes.",
+                "quote": "Old Men are twice Children.\nBis pueri senes.",
+                "work": "Sententiae Pueriles (1540)",
+                "author": "Leonard Culman, Charles Hoole",
+                "lexia": "old man twice child",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_6821daa19a2840e1",
+                "context": "Yet nevertheless, my father did me not mislike: But age so simple is, and easy to subdue: As childhood weak, that's void of wit and reason quite: They think there's nought, you flatter feigned, but all is true: Once old and twice a child, 'tis said with you, Which I affirm by proof, that was defined: In age my father had a childish mind.",
+                "quote": "Once old and twice a child,",
+                "work": "Cordila (1574)",
+                "author": "John Higgins",
+                "lexia": "old man twice child",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_2239f6f9bbcb7446",
+                "context": "[Ephraim:] But sir, beware you fall not back again Into your childish follies: but go forwards In manly actions, for non progredi id est regredi. [Nehemiah:] I know the meaning of that too, Ephraim: that's once a man and twice a child. But if I turn child again, while I have teeth in my head, I'll give Mistress Blith leave to dig 'em out with sugar plums, as she almost did these two of 'em yesterday, with her knuckles.",
+                "quote": "non progredi id est regredi.",
+                "work": "The New Academy, or The New Exchange (1636)",
+                "author": "Richard Brome",
+                "lexia": "old man twice child",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_18fac1f2fb1ce41f",
+                "context": "I find my growing Judgement daily instructs me how to be better, but my untamed affections and confirmed vitiosity makes me daily do worse; I find in my confirmed age the same sins I discovered in my youth, I committed many then because I was a child, and because I commit them still I am yet an Infant. Therefore I perceive a man may be twice a child before the days of dotage, and stand in need of Aeson's bath before threescore.",
+                "quote": "a man may be twice a child",
+                "work": "Religio Medici (1642)",
+                "author": "Sir Thomas Browne",
+                "lexia": "old man twice child",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_028ce75225433cb6",
+                "context": "Now fie upon him! what is Man, Whose life at best is but a span? When to an Inch it dwindles down, Ice in his bones, Snow on his crown, That he within his crazy brain, Kind thoughts of Love should entertain, That he, when Harvest comes should plow, And when 'tis time to reap, go sow, Who in imagination only strong, Though twice a Child, can never twice grow young.",
+                "quote": "twice a Child",
+                "work": "Advice to an Old Man of Sixty-Three, about to Marry a Girl of Sixteen (1686)",
+                "author": "Thomas Flatman",
+                "lexia": "old man twice child",
+                "formal_class": "Phrase",
+                "complexity": 1
+            }
+        ],
+        "lexia": "old man twice child"
+    },
+    {
+        "phrase": "In my mind's eye",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_880962580e78c61f",
+                "context": "But yet never Christian Britons so exiled That there near some that in their privacy Honoured Christ and heathen folk beguiled And near the castle such there dwelt three. That one of hem was blind and might not see, But it were with the eye of their mind With which men see, after that they [have] been blind.",
+                "quote": "with the eye of their mind",
+                "work": "The Canterbury Tales (1387)",
+                "author": "Geoffrey Chaucer",
+                "lexia": "mind's eye",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_909a37b5a02277e8",
+                "context": "[Pelargus:] I learn by myself how much the care of the father is toward his son, being absent, or being away from him, because my son is now lately put away from me, my mind can not abide or suffer to be in rest or quiet, but that he diligently haunteth before mine eyes, and before my mind. i. but that he continually or still is present or haunteth or walketh to and fro, before mine eyes, and in my mind (by reason of my much thinking upon him) I take care or thought for him being absent, not otherwise.",
+                "quote": "mine eyes, and before my mind. ",
+                "work": "Acolastus (English) (1540)",
+                "author": "John Palsgrave",
+                "lexia": "mind's eye",
+                "formal_class": "Phrase",
+                "complexity": 4
+            },
+            {
+                "id": "ww_b4cc414fb56c2490",
+                "context": "You have had many a thought of it, and bestowed many a day's labour for it, and yet do you not know it? O but you never saw it for all this? Answ. It is a spiritual Blessedness that Flesh and Blood can neither enjoy nor see: But by the eye of the Mind you have often seen, at least some glimpse of it; You know that it is the present intuition and full fruition of God himself and your glorified Redeemer with his blessed Angels and Saints in perfect Love, and Joy, and Praise. And if you know this, you are not altogether Strangers to Heaven.",
+                "quote": "by the eye of the Mind ",
+                "work": "A Treatise Of Self-Denial (1675)",
+                "author": "Richard Baxter",
+                "lexia": "mind's eye",
+                "formal_class": "Phrase",
+                "complexity": 3
+            }
+        ],
+        "lexia": "mind's eye"
+    },
+    {
+        "phrase": "a horse, a horse, my kingdom for a horse",
+        "source": "Richard III, 1593",
+        "matches": [
+            {
+                "id": "ww_32c26a7909c83bda",
+                "context": "[Muly Mahamet:] Villain, a horse. [Boy:] Oh my Lord, if you return you die. [Muly Mahamet:] Villain I say, give me a horse to fly, To swim the river villain, and to flie. [Muly Mahamet:] A horse, a horse, villain a horse, That I may take the river straight and fly.",
+                "quote": "a horse.",
+                "work": "The Battle of Alcazar (1588)",
+                "author": "George Peele",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 4
+            },
+            {
+                "id": "ww_782a5cebdaa9d8ae",
+                "context": "A man, a man, a kingdom for a man! Why, how now, currish, mad Athenian? Thou cynic dog, see'st not streets do swarm With troops of men?",
+                "quote": "A man, a man, a kingdom for a man! ",
+                "work": "The Scourge of Villainy (1598)",
+                "author": "John Marston",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_b5b8083a6a1282bc",
+                "context": "[Security:] [...] A boat, a boat, a boat, a full hundred Marks for a boat.",
+                "quote": "A boat, a boat, a boat, a full hundred Marks for a boat.",
+                "work": "Eastward Ho! (1605)",
+                "author": "George Chapman, Ben Jonson, John Marston",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_a59a84adf088089f",
+                "context": "[Don Zuccone:] [...] A fool, a fool, a fool! my Coxcomb for a fool!",
+                "quote": "A fool, a fool, a fool! my Coxcomb for a fool!",
+                "work": "The Fawn, or Parasitaster (1605)",
+                "author": "John Marston",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_9a6cb20b0b157545",
+                "context": "[Sigismond:] [...] but where is Europa? See where she swims away upon a bull's back; my kingdom for a boat, for a muscle boat; lay more sails on!",
+                "quote": "my kingdom for a boat, for a muscle boat; ",
+                "work": "The Poor Man's Comfort (1616)",
+                "author": "Robert Daborne",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 3
+            },
+            {
+                "id": "ww_d62468b11823d4c9",
+                "context": "[Sampson:] [...] Look up brave friend, I have no means to rescue thee, my Kingdom for a sword. [Champernell:] I'll sword you presently. I'll claw your skin-coat too.",
+                "quote": "my Kingdom for a sword.",
+                "work": "The Little French Laywer (1620)",
+                "author": "John Fletcher, Philip Massinger",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 2
+            },
+            {
+                "id": "ww_4d363cb4783e0b62",
+                "context": "Upon this Hill they met; why, he could tell The Inch where Richmond stood, where Richard fell; Besides what of his knowledge he could say, He had Authentic notice from the Play; Which I might guess by his mustering up the Ghosts, And policies not incident to hosts: But chiefly by that one perspicuous thing, Where he mistook a Player for a King, For when he would have said, King Richard died, And called a horse, a horse, he Burbage cried.",
+                "quote": "King Richard ",
+                "work": "Iter Boreale (1647)",
+                "author": "Richard Corbet",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 1
+            },
+            {
+                "id": "ww_6f12e582a20c2675",
+                "context": "[King Philip of Spain:] I've all this while been angry but in vain; She heats me first, then strokes me tame again. Oh wert thou true how happy should I be! Think'st Thou that I have Joy to part with thee? No, all my Kingdom for the bliss I'd give: Nay though it were not so but to believe.",
+                "quote": "all my Kingdom for the bliss I'd give:",
+                "work": "Don Carlos, Prince of Spain (1676)",
+                "author": "Thomas Otway",
+                "lexia": "my kingdom for a horse",
+                "formal_class": "Snowclone",
+                "complexity": 3
+            }
+        ],
+        "lexia": "my kingdom for a horse"
+    },
+    {
+        "phrase": "go, by Saint Hieronimo",
+        "source": "The Taming of the Shrew, 1592",
+        "matches": [
+            {
+                "id": "ww_d2361763e8343194",
+                "context": "[King:] Who is he that interrupts our business? [Hieronimo:] Not I. (Aside) Hieronimo, beware, go by, go by.",
+                "quote": "Hieronimo, beware, go by, go by.",
+                "work": "The Spanish Tragedy (1587)",
+                "author": "Thomas Kyd",
+                "lexia": "Hieronimo go by",
+                "formal_class": "Motif with name",
+                "complexity": 4
+            },
+            {
+                "id": "ww_870f29a7dd6f45d9",
+                "context": "[Simperina:] Go from my window go, go from, and away, go by old Hieronimo; nay and you shrink i'th wetting, walk, walk, walk.",
+                "quote": "Go from my window go, go from, and away, go by old Hieronimo",
+                "work": "Blurt, Master Constable (1601)",
+                "author": "Thomas Dekker",
+                "lexia": "Hieronimo go by",
+                "formal_class": "Motif with name",
+                "complexity": 1
+            },
+            {
+                "id": "ww_e01ecfd8de9acc61",
+                "context": "[Tucca:] Go by Hieronimo, go by; and here, drop the ten shillings into this basin; do, drop, when Jack?",
+                "quote": "Go by Hieronimo, go by",
+                "work": "Satiromastix, or The Untrussing of the Humorous Poet (1601)",
+                "author": "Thomas Dekker",
+                "lexia": "Hieronimo go by",
+                "formal_class": "Motif with name",
+                "complexity": 2
+            },
+            {
+                "id": "ww_a6f4b0e3428ad510",
+                "context": "[Fabritio:] [...] And call thee bloody bones, and Spade, and Spitfire, And Gaffer Madman; and go by Hieronimo, And will with wisp and come aloft, and crack rope, And old Saint Dennis with the dudgeon Codpiece: And twenty such names.",
+                "quote": "and go by Hieronimo",
+                "work": "The Captain (1612)",
+                "author": "Francis Beaumont, John Fletcher",
+                "lexia": "Hieronimo go by",
+                "formal_class": "Motif with name",
+                "complexity": 1
+            },
+            {
+                "id": "ww_e2adb2be413fd5a5",
+                "context": "[First Tailor:] Who shall act Prince Belthazer and the King? [Third Tailor:] I will do Prince Belthazer too: and for the King Who but I? which of you all has such a face for a King, Or such a leg to trip up the heels of a Traitor? [Second Tailor:] You will do all I think. [Third Tailor:] Yes marry will I; who but Uirmine? yet I will Leave all to play the King: Pass by Hieronimo.",
+                "quote": "Pass by Hieronimo.",
+                "work": "The Rebellion (1633)",
+                "author": "Thomas Rawlins",
+                "lexia": "Hieronimo go by",
+                "formal_class": "Motif with name",
+                "complexity": 2
+            }
+        ],
+        "lexia": "Hieronimo go by"
+    },
+    {
+        "phrase": "thereby hangs a tale",
+        "source": "The Taming of the Shrew, 1592",
+        "matches": [
+            {
+                "id": "ww_b71ba2ae83103344",
+                "context": "Yet, though I say it, thereby lieth a tale [...].",
+                "quote": "thereby lieth a tale",
+                "work": "The Garland or Chaplet of Laurel (1568)",
+                "author": "John Skelton",
+                "lexia": "thereby hangs a tale",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_0dbc3e90bbb46334",
+                "context": "[Sir Oliver Smallshank:] We old men have our crotchets, our conundrums, Our fegares, quirks and quibibles, As well as youth, Justice Tutchim I go To hunt no Buck, but prick a lusty Doe, I go in truth a wooing. [Justice Tutchin:] Then ride with me, I'll bring you to my sister Somerfield. [Sir Oliver Smallshank:] Justice not so: by her there hangs a Tale.",
+                "quote": "by her there hangs a Tale. ",
+                "work": "Ram Alley (1608)",
+                "author": "Lording Barry",
+                "lexia": "thereby hangs a tale",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_d67a1f9d4d50f936",
+                "context": "[Clown:] I confess it; but whether you have served him well, or no, there hangs a Tale.",
+                "quote": "there hangs a Tale.",
+                "work": "A Maidenhead Well Lost (1629)",
+                "author": "Thomas Heywood",
+                "lexia": "thereby hangs a tale",
+                "formal_class": "Phrase",
+                "complexity": 1
+            }
+        ],
+        "lexia": "thereby hangs a tale"
+    },
+    {
+        "phrase": "springes to catch woodcocks",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_8e68a517bc3ecceb",
+                "context": "I have a fine bow, and an ivory arrow: And if thou miss, yet meat thou shalt lack, I'll hang a bag and bottle at thy back. Wilt thou set springs in a frosty Night, To catch the long-billed Woodcock and the Snipe? (By the bright glimmering of the Starry light) The Partridge, Phaesant, or the greedy Crype?",
+                "quote": "Wilt thou set springs in a frosty Night, \nTo catch the long-billed Woodcock",
+                "work": "The Tears of an Affectionate Shepherd Sick for Love (1594)",
+                "author": "Richard Barnfield",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 4
+            },
+            {
+                "id": "ww_ff8f000dd9cb7a3b",
+                "context": "[Ganuzido:] Why, what have you taken then? or have you authority to take fools as you finde them in your way? If you have, you may happen yet to be deceived. [Grimello:] Why sir, I set no springs for Woodcocks, and though I be no great wise man, yet I can do something else, than shoo the Goose for my living: and therefore, I pray you neither fear your Purse, nor play too much with my folly.",
+                "quote": "springs for Woodcocks",
+                "work": "Grimello's Fortunes (1604)",
+                "author": "Nicholas Breton",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_10ba3fba1c0c1529",
+                "context": "[Sir Davy:] Here's the spring I ha' set to catch this woodcock in: an action In a false name - unknown to him - is entered. I'th' counter to arrest Jack Dapper.",
+                "quote": "the spring\nI ha' set to catch this woodcock in: ",
+                "work": "The Roaring Girl (1611)",
+                "author": "Thomas Dekker, Thomas Middleton",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_3b6425a2159f1d62",
+                "context": "My honest friends that reads, I you beseech To make the best construction of each letter; And not to blame my lavishness of speech, In paying soundly where I am a debtor: My word and credit else you should infringe, Which was to catch the Woodcock in a Springe.",
+                "quote": "to catch the Woodcock in a Springe",
+                "work": "Laquei Ridiculosi (1613)",
+                "author": "Henry Parrot",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_8bdc1e03f5a6a253",
+                "context": "Alas, poor Book, hunt not thou after praise, Nor dare to stretch thy hand unto the Bays Upon a Poets head: let it suffice To thee and me, the world doth us despise. For 'tis a mad World, and it turns on hinges, Whilst some a-birding go, and set their springes For to catch Woodcocks. Others sting and bite Like Wasps and Mastiffs, and do take delight To quarrel with their shadows, nay, themselves, And their own brood.",
+                "quote": "set their springes \nFor to catch Woodcocks.",
+                "work": "The House of Correction (1619)",
+                "author": "John Heath",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_379b8583a4d90080",
+                "context": "[Young Jorden:] By that means we shall get quit of him. [Trickmore:] The posture our affairs are in at present, do not much seem to require his absence, therefore I have contrived a defeat, and will keep him yet in play. I have set another Spring, which if it catch the Woodcock, 'twill hold him fast. Look here comes forth our Knight in Petti-coats: muffle yourself up in your Cloak, and be gone. [Young Jorden:] A stately dame on my word.",
+                "quote": "Spring, which if it catch the Woodcock",
+                "work": "The Citizen Turned Gentleman (1672)",
+                "author": "Edward Ravenscroft",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_d2d2a262485c5d23",
+                "context": "[Roger:] Her's a Letter, Sir, to be delivered to you with all speed. [Ramble:] Ha - let me see't quickly (Opens it and reads.) From Eugenia [Townly:] Ay the Devil's coming abroad again to hinder your conversion. [Ramble (reads):] Sir, My Husband will be from home all this morning, I am very desirous to be informed the particulars of last nights misfortune; curiosity forces me, in spite of blushes to give you this invitation. Enter at the back-door without knocking, if you meet not Jane below come directly up stairs. - Good. [Townly:] Here's another springe laid to catch the Woodcock. [Ramble:] Frank, is not here temptation now, is it to be resisted think you, can flesh and blood forbear going? [Townly:] Truly here is a very fair appearance.",
+                "quote": "Here's another springe laid to catch the Woodcock.",
+                "work": "The London Cuckolds (1682)",
+                "author": "Edward Ravenscroft",
+                "lexia": "springes to catch woodcocks",
+                "formal_class": "Phrase",
+                "complexity": 3
+            }
+        ],
+        "lexia": "springes to catch woodcocks"
+    },
+    {
+        "phrase": "Illo, ho, ho, my lord",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_07f94c5a14cdc619",
+                "context": "[Master Mulligrub:] Who goes there: Illo, ho, ho: sounds shall I run mad, Loose my wits: shall I be hanged, hark who goes there? Do not fear to be poor Mullegrub, Thou hast a sure stock now.",
+                "quote": "Illo, ho, ho: ",
+                "work": "The Dutch Courtesan (1604)",
+                "author": "John Marston",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_235b7f298b54d631",
+                "context": "[Sigismond:] Ho! illo, illo, illo. [Cazzo:] The game's not up yet Sir. I think some gelder had a hand in the getting of him, he understands no language but the horn.",
+                "quote": "Ho! illo, illo, illo. ",
+                "work": "The Poor Man's Comfort (1616)",
+                "author": "Robert Daborne",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_c2f29658555093e7",
+                "context": "[Devitry:] Here Sir, here, I could beat my brains out, that could not think of boots, boots Sir, wide-topped boots, I shall love them the better whilst I live; but are you sure your Jewels are here Sir? [Protaldye:] Sure sayst thou? ha, ha, ha. [Devitry:] So ho, illo ho. [Soldiers within] Here Captain. here. [Protaldye:] 'Foot what do you mean Sir? (Enter Soldiers.) [Devitry:] A trick to boot, say you; here you dull slaves, purchase, purchase the soul of the Rock, Diamonds, sparkling Diamonds.",
+                "quote": "So ho, illo ho. ",
+                "work": "Thierry, King of France, and His Brother Theodoret (1617)",
+                "author": "Francis Beaumont, John Fletcher, Philip Massinger",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_585eaf1c6368e7af",
+                "context": "[Clown:] If there be any man that wants a name, will come in for conscience sake, and acknowledge himself to be a Whore-Master, he shall have that laid to his charge in an hour, he shall not be rid on in an age; if he have Lands, he shall have an heir, if he have patience, he shall have a wife, if he have neither Lands nor patience, he shall have a whore, so ho boy, so ho, so, so. [Prince Uter (within):] So, ho, by, so, ho, illo ho, illo ho. [Clown:] Har, hark sister, there's one hollows to us, what a wicked world's this, a man cannot so soon name a whore but a knave comes presently, and see where he is, stand close a while, sister.",
+                "quote": "So, ho, by, so, ho, illo ho, illo ho.",
+                "work": "The Child Hath Found His Father, or The Birth of Merlin (1622)",
+                "author": "William Rowley",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 4
+            },
+            {
+                "id": "ww_6e3b338bf16ebf06",
+                "context": "[Calib the Witch:] Ha, ha, ha; and when will that be Tarpax? Vanish like smoke, my fear, come kiss me my Love, Thou hast earned thy breakfast Chuck; here suck thy fill. [Clown (within):] Illo ho, ho Illo. [Tarpax:] What mortal's that disturbs us? Shall I blast him? [Calib the Witch:] Hold my Love, 'tis Suckabus our son; fall off.",
+                "quote": "Illo ho, ho Illo.",
+                "work": "The Seven Champions of Christendom (1634)",
+                "author": "John Kirke",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_98df9ad5de049472",
+                "context": "[Bottle:] Weather? You are wise; do you think, Sir, I have so little honesty, to be Sir Pandarus to your Melancholy. Illo, ho . - [Paris:] What, art thou mad? [Bottle:] You are little better: if you can get their consent. [Paris:] Whose consent? [Bottle:] Hobinoll, Crab, Toad-stool, - Illo ho , boys. Some friends of yours, that sent me to hunt out your Highness, your humble Subjects and Play-fellows, that have a mind to be merry.",
+                "quote": "Illo, ho . - ",
+                "work": "The Triumph of Beauty (1634)",
+                "author": "James Shirley",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_25e51ae4b6234004",
+                "context": "[Maid:] Yes, I have heard stories, how some men Have in such lonely places been affrighted With dreadful shapes and noises. (Macduff hollows.) [Lady Macduff:] But hark, my lord sure hollows; 'Tis he; answer him quickly. [Servant:] Illo, ho, ho, ho. (Enter Macduff.) [Lady Macduff:] Now I begin to see him: are you afoot, my Lord?",
+                "quote": "Illo, ho, ho, ho. ",
+                "work": "Macbeth, A Tragedy (1664)",
+                "author": "Sir William D'Avenant",
+                "lexia": "hillo ho ho",
+                "formal_class": "Phrase",
+                "complexity": 2
+            }
+        ],
+        "lexia": "hillo ho ho"
+    },
+    {
+        "phrase": "though this be madness, yet there is method in it",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_ba8b881de92fd8a4",
+                "context": "[Edgar:] O, matter and impertinency mixed, Reason in madness!",
+                "quote": "Reason in madness!",
+                "work": "King Lear (1605)",
+                "author": "William Shakespeare",
+                "lexia": "madness and method",
+                "formal_class": "Keywords",
+                "complexity": 4
+            },
+            {
+                "id": "ww_7286ff06f562c07b",
+                "context": "[Don Gerardo:] These Actions sure did seem a perfect madness. [Servant:] It seemed indeed a madness methodized, Like theirs who are Transported far with Passion.",
+                "quote": "a madness methodized",
+                "work": "The Fatal Jealousy (1672)",
+                "author": "Henry Neville Payne",
+                "lexia": "madness and method",
+                "formal_class": "Keywords",
+                "complexity": 3
+            },
+            {
+                "id": "ww_1917adced358cb4a",
+                "context": "The wonder of that Foreigner in Henry VIII's days, Deus bone quomodo hic vivunt gentes, that saw men killed for being Protestants, and for being Papists, was not so contradictory a subject as the Papists usage of the Saints, a stupendous instance of man's madness and Satan's methods, that at the same time can rack, and burn, and Murder Saints, and yet Honour the Relics, Names and Memories of the Dead that were before them.",
+                "quote": "man's madness and Satan's methods",
+                "work": "A Sermon Preached at the Funeral of Mr. Henry Stubbs (1676)",
+                "author": "Richard Baxter",
+                "lexia": "madness and method",
+                "formal_class": "Keywords",
+                "complexity": 4
+            },
+            {
+                "id": "ww_89443854a5459695",
+                "context": "[Rowland:] Methought there was a Method in her madness, she did not know herself i'th Glass.",
+                "quote": "there was a Method in her madness, ",
+                "work": "The Devil of a Wife (1686)",
+                "author": "Thomas Jevon",
+                "lexia": "madness and method",
+                "formal_class": "Keywords",
+                "complexity": 4
+            },
+            {
+                "id": "ww_b42fadea9f893c6e",
+                "context": "[Lyonel:] [...] (Sings) There's nothing so fatal as Woman, To hurry a Man to his Grave, You must think, you may plot, You may sigh like a Sot: She uses you more like a Slave. But a Bottle, although it be common, The Cheats of the Fair will undo, It will drive from your Head The Delights of the Bed; He that's drunk is not able to woo. (Exit Lyonel) [Celia:] Method in Madness, Grace even in Distraction: I'll never leave him, 'till, by Art or Prayer, I have restored his Senses to their Office.",
+                "quote": "Method in Madness",
+                "work": "A Fool's Preferment (1688)",
+                "author": "Thomas D'Urfey",
+                "lexia": "madness and method",
+                "formal_class": "Keywords",
+                "complexity": 3
+            }
+        ],
+        "lexia": "madness and method"
+    },
+    {
+        "phrase": "planets strike",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_57dcec5b9ff2c4b9",
+                "context": "[Bobadill:] [...] sure I was struck with a planet then, for I had no power to touch my weapon. [Ed. Knowell:] Aye, like enough, I have heard of many that have been beaten under a planet: go, get you to a surgeon.",
+                "quote": "I was struck with a planet ",
+                "work": "Every Man In His Humour (1598)",
+                "author": "Ben Jonson",
+                "lexia": "planets strike",
+                "formal_class": "Two-word item",
+                "complexity": 3
+            },
+            {
+                "id": "ww_aaeb0dba8a5ac513",
+                "context": "[Marcus:] Who is this? My niece, that flies away so fast? - Cousin, a word. Where is your husband? If I do dream, would all my wealth would wake me. If I do wake, some planet strike me down That I may slumber an eternal sleep.",
+                "quote": "some planet strike me down",
+                "work": "Titus Andronicus (1592)",
+                "author": "George Peele, William Shakespeare",
+                "lexia": "planets strike",
+                "formal_class": "Two-word item",
+                "complexity": 1
+            },
+            {
+                "id": "ww_3bed848d2566166b",
+                "context": "[Cominius:] [...] Alone he entered The mortal gate o' th' city, which he painted With shunless destiny; aidless came off And with a sudden reinforcement struck Corioles like a planet.",
+                "quote": "struck\nCorioles like a planet. ",
+                "work": "Coriolanus (1608)",
+                "author": "William Shakespeare",
+                "lexia": "planets strike",
+                "formal_class": "Two-word item",
+                "complexity": 4
+            },
+            {
+                "id": "ww_aef241d5b9263438",
+                "context": "[D'Amville:] With an amazement behold thine error and be planet struck.",
+                "quote": "be planet struck.",
+                "work": "The Atheist's Tragedy (1610)",
+                "author": "Cyril Tourneur",
+                "lexia": "planets strike",
+                "formal_class": "Two-word item",
+                "complexity": 2
+            },
+            {
+                "id": "ww_2560885c478fdfe0",
+                "context": "[Leontes:] [...] Physic for 't there's none. It is a bawdy planet, that will strike Where 'tis predominant; and 'tis powerful, think it, From east, west, north, and south.",
+                "quote": "a bawdy planet, that will strike",
+                "work": "The Winter's Tale (1611)",
+                "author": "William Shakespeare",
+                "lexia": "planets strike",
+                "formal_class": "Two-word item",
+                "complexity": 2
+            }
+        ],
+        "lexia": "planet strike"
+    },
+    {
+        "phrase": "I do bear a brain.",
+        "source": "Romeo and Juliet, 1595",
+        "matches": [
+            {
+                "id": "ww_ff2cef3775c5331c",
+                "context": "[Mrs. Mulligrub:] [...] nay and I bear not a brain [...].",
+                "quote": "nay and I bear not a brain ",
+                "work": "The Dutch Courtesan (1604)",
+                "author": "John Marston",
+                "lexia": "bear a brain",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_58a0dec287a4170c",
+                "context": "[Gonzago:] [...] is't not well thought my Lord, we must bear brain [...]",
+                "quote": "we must bear brain ",
+                "work": "The Fawn, or Parasitaster (1605)",
+                "author": "John Marston",
+                "lexia": "bear a brain",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_01bd7d0624c8a955",
+                "context": "[Throat:] [...] Dash, we must bear some brain to St. John's street, go, run, fly: and afar off enquire [...].",
+                "quote": "we must bear some brain ",
+                "work": "Ram Alley (1608)",
+                "author": "Lording Barry",
+                "lexia": "bear a brain",
+                "formal_class": "Phrase",
+                "complexity": 2
+            },
+            {
+                "id": "ww_97b67e22685ce125",
+                "context": "[Clown:] [...] As I can bear a pack, so I can bear a brain [...].",
+                "quote": "I can bear a brain ",
+                "work": "The Golden Age (1611)",
+                "author": "Thomas Heywood",
+                "lexia": "bear a brain",
+                "formal_class": "Phrase",
+                "complexity": 1
+            }
+        ],
+        "lexia": "bear a brain"
+    },
+    {
+        "phrase": "livers white as milk",
+        "source": "The Merchant of Venice, 1596",
+        "matches": [
+            {
+                "id": "ww_415def570b10b5b9",
+                "context": "[Falstaff:] [...] left the liver white and pale, which is the badge of pusillanimity and cowardice.",
+                "quote": "  liver white and pale",
+                "work": "Henry IV Part 2 (1597)",
+                "author": "William Shakespeare",
+                "lexia": "white liver indicates cowardice",
+                "formal_class": "Keywords",
+                "complexity": 1
+            },
+            {
+                "id": "ww_215595adbf8efd41",
+                "context": "[Hamlet:] [...] But I am pigeon-livered and lack gall [...].",
+                "quote": "But I am pigeon-livered and lack gall ",
+                "work": "Hamlet (1600)",
+                "author": "William Shakespeare",
+                "lexia": "white liver indicates cowardice",
+                "formal_class": "Keywords",
+                "complexity": 4
+            },
+            {
+                "id": "ww_5cdd4abfb59f6f0f",
+                "context": "[Kent:] [...] a lily-livered, action-taking, whoreson, glass-gazing [...] the composition of a knave, beggar, coward, pander, and the son and heir of a mongrel bitch.",
+                "quote": " lily-livered,",
+                "work": "King Lear (1605)",
+                "author": "William Shakespeare",
+                "lexia": "white liver indicates cowardice",
+                "formal_class": "Keywords",
+                "complexity": 4
+            }
+        ],
+        "lexia": "white liver indicates cowardice"
+    },
+    {
+        "phrase": "All the world's a stage",
+        "source": "As You Like It, 1600",
+        "matches": [
+            {
+                "id": "ww_c9d35c25f4fc4189",
+                "context": "[Damon:] [...] Pythagoras said that this world was like a stage Whereon many play their parts.",
+                "quote": "Pythagoras ",
+                "work": "Damon and Pythias (Edwards) (1564)",
+                "author": "Richard Edwards",
+                "lexia": "world as stage",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_7795f933b612f710",
+                "context": "[Aretinus:] Are you on the stage, You talk so boldly? [Paris:] The whole world being one This place is not exempted [...].",
+                "quote": "the stage,",
+                "work": "The Roman Actor (1626)",
+                "author": "Philip Massinger",
+                "lexia": "world as stage",
+                "formal_class": "Phrase",
+                "complexity": 4
+            }
+        ],
+        "lexia": "world as stage"
+    },
+    {
+        "phrase": "we will not carry coals",
+        "source": "Romeo and Juliet, 1595",
+        "matches": [
+            {
+                "id": "ww_0eaf5058b7a910c7",
+                "context": "[Puntarvolo:] [...] Here comes one that will carry coals; ergo, will hold my dog [...].",
+                "quote": "carry coals",
+                "work": "Every Man Out of His Humour (1599)",
+                "author": "Ben Jonson",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 2
+            },
+            {
+                "id": "ww_51946dd5d1d57d4a",
+                "context": "[Boy:] [...] Nym and Bardolph are sworn brothers in filching, and in Calais they stole a fire shovel. I knew by that piece of service the men would carry coals.",
+                "quote": "carry coals.",
+                "work": "Henry V (1599)",
+                "author": "William Shakespeare",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 3
+            },
+            {
+                "id": "ww_21a4c5dc5b2f6ed6",
+                "context": "[Balurdo:] [...] I were as he, I would bear no coals, law I, I begin to swell, puff.",
+                "quote": " I would bear no coals",
+                "work": "Antonio's Revenge (1600)",
+                "author": "John Marston",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 4
+            },
+            {
+                "id": "ww_994d23875f3f8ca7",
+                "context": "[Malevole:] Great slaves fear better than love, born naturally for a coal-basket [...].",
+                "quote": "a coal-basket",
+                "work": "The Malcontent (1603)",
+                "author": "John Marston, John Webster",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 3
+            },
+            {
+                "id": "ww_f32f713a36985f62",
+                "context": "[Quintiliano:] And yet take heed you swear by no man's beard but your own, for that may breed a quarrel; above all things you must carry no coals.",
+                "quote": "you must carry no coals.",
+                "work": "May Day (1604)",
+                "author": "George Chapman",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 4
+            },
+            {
+                "id": "ww_7be6a3588e6b5de0",
+                "context": "[Quintiliano:] Why sir, because I entertained this Gentleman for my Antient, (being my dear friend and an excellent scholar) he takes pepper ith' nose and sneezes it out upon my Antient; now sir (he being of an uncoal-carrying spirit) falls foul on him, calls him gull openly [...].",
+                "quote": "(he being of an uncoal-carrying spirit)",
+                "work": "May Day (1604)",
+                "author": "George Chapman",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 4
+            },
+            {
+                "id": "ww_83e9ca4d103b86e1",
+                "context": "[Lurdo:] [...] I'll carry coals and you will, no horns, I know the law.",
+                "quote": "I'll carry coals and you will, ",
+                "work": "Law-Tricks (1604)",
+                "author": "John Day",
+                "lexia": "carry coals",
+                "formal_class": "Two-word item",
+                "complexity": 3
+            }
+        ],
+        "lexia": "carry coals"
+    },
+    {
+        "phrase": "frailty, thy name is woman",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_95966dab4576ec42",
+                "context": "The woman is a weak creature [...] She is the weaker vessel, of a frail heat, inconstant [...]. The woman is the more frail part [...]. The woman is a frail vessel.",
+                "quote": "The woman is a weak creature ",
+                "work": "On the State of Matrimony (1571)",
+                "author": "John Jewel",
+                "lexia": "woman's frailty",
+                "formal_class": "Two-word item",
+                "complexity": 4
+            },
+            {
+                "id": "ww_3a6f583779747368",
+                "context": "[Gondarino:] My Lord, I speak not this to gain new grace, But howsoever you esteem my words, My love and duty will not suffer me To see you favour such a prostitute, And I stand by dumb; without Rack, Torture, Or Strappado, I'll unrip myself, I do confess I was in company with that pleasing peace of frailty, that we call woman; I do confess after along and tedious siege, I yielded.",
+                "quote": "that pleasing peace of frailty, that we call woman",
+                "work": "The Woman-Hater (1606)",
+                "author": "Francis Beaumont, John Fletcher",
+                "lexia": "woman's frailty",
+                "formal_class": "Two-word item",
+                "complexity": 1
+            },
+            {
+                "id": "ww_2b785e10c908c7ec",
+                "context": "[Dalila:] \"[...] To what I did thou shewdst me first the way. But I to enemies revealed, and should not. Nor shouldst thou have trusted that to woman's frailty: Ere I to thee, thou to thyself wast cruel. [...]\"",
+                "quote": "woman's frailty",
+                "work": "Samson Agonistes (1671)",
+                "author": "John Milton",
+                "lexia": "woman's frailty",
+                "formal_class": "Two-word item",
+                "complexity": 3
+            },
+            {
+                "id": "ww_0747839b540f70c7",
+                "context": "How could you once so kind appear, To kiss, to sigh, and shed a tear, To cherish and caress me so, And now not let but bid me go? Oh Woman! Frailty is thy name, Since she's untrue y'are all to blame, And but in man no truth is sound: 'Tis a fair Sex, we all must love it, But (on my conscience) could we prove it, They all are false even under ground.",
+                "quote": "Oh Woman! Frailty is thy name",
+                "work": "Sonnet (1687)",
+                "author": "Charles Cotton",
+                "lexia": "woman's frailty",
+                "formal_class": "Two-word item",
+                "complexity": 1
+            }
+        ],
+        "lexia": "woman's frailty"
+    },
+    {
+        "phrase": "hell itself should gape",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_2e3d7768539ae2ab",
+                "context": "Therefore gapeth hell and openeth her mouth marvellous wide, that their glory, multitude, and wealth, with such as rejoice in her, may descend into it.",
+                "quote": "gapeth hell and openeth her mouth marvellous wide, ",
+                "work": "The Bishop's Bible (1568)",
+                "author": "Matthew Parker",
+                "lexia": "hell gapes",
+                "formal_class": "Two-word item",
+                "complexity": 3
+            },
+            {
+                "id": "ww_a055872533d2ab57",
+                "context": "[Faustus:] [...] My God, my God, look not so fierce on me. Adders and serpents, let me breathe awhile. Ugly hell, gape not, come not, Lucifer! I'll burn my books. Ah, Mephistophilis!",
+                "quote": "Ugly hell, gape not",
+                "work": "Doctor Faustus (1588)",
+                "author": "Christopher Marlowe",
+                "lexia": "hell gapes",
+                "formal_class": "Two-word item",
+                "complexity": 1
+            },
+            {
+                "id": "ww_84f20b8b2eb71001",
+                "context": "[Canutus:] Thou'st spoke enough to damn thee, Impudent Traitor, go die unpitied; Though thou hast my hate, thou shalt not have the honour of my sword to take away thy life, you of our Guard; See a base death performed upon this Slave. [Captain:] Farewell my Liege you once must have a grave. (Exit with Guard.) [Harold:] My Resolution's firm, and I will speak, though hell should gape to swallow me alive; What's he that's gone to death my Sovereign? [Canutus:] Traytor (Harold) to my best content.",
+                "quote": "though hell should gape",
+                "work": "The Lovesick King (1619)",
+                "author": "Anthony Brewer",
+                "lexia": "hell gapes",
+                "formal_class": "Two-word item",
+                "complexity": 1
+            },
+            {
+                "id": "ww_eb3ebae9ea90daa0",
+                "context": "This Sin faln Man raise-up t'integrity, Or rase Me out from Heav'ns society. What though He sinned? alas He was but Earth! Though dead in Sin? thy Grace can give new birth! Though grieved with pains? O thou canst 'ford him ease! Though Hell gape for Him? thou canst Hell appease! Thou mad'st Him Thee to bless eternally: But damned Souls curse everlastingly.",
+                "quote": "Though Hell gape for Him?",
+                "work": "The Perfect-Cursed-Blessed Man (1628)",
+                "author": "Joseph Fletcher",
+                "lexia": "hell gapes",
+                "formal_class": "Two-word item",
+                "complexity": 2
+            },
+            {
+                "id": "ww_6c565da6889f5269",
+                "context": "[Clovis:] What is it, Eunuch? [...] Though death stood gaping wide to swallow me, I would not shrink nor fear.",
+                "quote": "Though death stood gaping wide to swallow me, \nI would not shrink nor fear.",
+                "work": "The Fatal Contract (1633)",
+                "author": "William Hemings",
+                "lexia": "hell gapes",
+                "formal_class": "Two-word item",
+                "complexity": 2
+            }
+        ],
+        "lexia": "hell gapes"
+    },
+    {
+        "phrase": "O all you host of heaven!",
+        "source": "Hamlet, 1600",
+        "matches": [
+            {
+                "id": "ww_3101379204640286",
+                "context": "Then God turned himself away and gave them up to serve the host of heaven, as it is written in the book of the Prophets [...].",
+                "quote": "the host of heaven, ",
+                "work": "The Geneva Bible (1560)",
+                "author": "William Cole, Myles Coverdale, Anthony Gilby, Christopher Goodman, Thomas Sampson, William Whittingham",
+                "lexia": "host of heaven",
+                "formal_class": "Phrase",
+                "complexity": 1
+            },
+            {
+                "id": "ww_c6bb592912665657",
+                "context": "Thou art Lord alone: thou hast made heaven, and the heaven of all heavens, with all their host, the earth, and all things that are therein, the seas, and all that are in them, and thou preservest them all, and the host of the heaven worshippeth thee.",
+                "quote": "the heaven of all heavens, with all their host, ",
+                "work": "The Geneva Bible (1560)",
+                "author": "William Cole, Myles Coverdale, Anthony Gilby, Christopher Goodman, Thomas Sampson, William Whittingham",
+                "lexia": "host of heaven",
+                "formal_class": "Phrase",
+                "complexity": 3
+            },
+            {
+                "id": "ww_cd82c881f4f118d0",
+                "context": "[D'Amville:] Now all the host of heaven forbid!",
+                "quote": " all the host of heaven ",
+                "work": "The Atheist's Tragedy (1610)",
+                "author": "Cyril Tourneur",
+                "lexia": "host of heaven",
+                "formal_class": "Phrase",
+                "complexity": 1
+            }
+        ],
+        "lexia": "host of heaven"
+    }
+]
