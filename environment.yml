@@ -14,4 +14,5 @@ dependencies:
       - jupyter_bokeh>=3.0.0
       - opentsne>=0.6.0
       - spacy>=3.0.0,<4.0.0
-      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web_sm
+      - spacy_sentence_bert>=0.1.2
+      - https://github.com/MartinoMensio/spacy-sentence-bert/releases/download/v0.1.2/en_paraphrase_distilroberta_base_v1-0.1.2.tar.gz#en_paraphrase_distilroberta_base_v1-0.1.2
