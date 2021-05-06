@@ -18,3 +18,4 @@ dependencies:
       - https://github.com/MartinoMensio/spacy-sentence-bert/releases/download/v0.1.2/en_paraphrase_distilroberta_base_v1-0.1.2.tar.gz#en_paraphrase_distilroberta_base_v1-0.1.2
       - markdown>=3.3.4
       - networkx>=2.5.1
+      - jupyter-server-proxy
