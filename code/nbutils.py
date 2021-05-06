@@ -8,6 +8,9 @@ import functools
 import ipywidgets as widgets
 import requests
 import markdown
+import openTSNE
+import openTSNE.callbacks
+import networkx as nx
 
 import bokeh.plotting
 import bokeh.models
@@ -17,7 +20,6 @@ import bokeh.layouts
 
 from functools import partial
 from cached_property import cached_property
-from openTSNE import TSNE
 from IPython.core.display import HTML, display
 
 from vectorian.embeddings import TokenEmbeddingAggregator, prepare_docs
@@ -58,32 +60,19 @@ class Gold:
 
         return doc_details
     
-    @cached_property
-    def doc_digest_to_ids(self):
-        digests = {}
+    def doc_digests(self, n=80):
         for query in self._data:
             for m in query["matches"]:
-                digests[f"{m['work']}: {m['context']}"[:80] + "..."] = m['id']
-        return digests
-        
+                yield (f"{m['work']}: {m['context']}"[:n] + "..."), m['id']
 
     
-class DocFormatter:
-    def __init__(self, gold):
-        self._template = string.Template("""
-            <div style="margin-left:2em">
-                <span style="font-variant:small-caps; font-size: 14pt;">${title}</style>
-                <span style="float:right; font-size: 10pt;">query: ${phrase}</span>
-                <hr>
-                <div style="font-variant:normal; font-size: 10pt;">${text}</div>
-            </div>
-            """)
-        self._gold = gold
+class ContextFormatter:
+    def __init__(self):
+        pass
     
-    def enhanced_doc_text(self, doc):
-        with doc.text() as text_ref:
-            text = text_ref.get()
-        quote = self._gold.by_id[doc.unique_id]["match"]["quote"]
+    def format_context(self, record):
+        text = record["context"]
+        quote = record["quote"]
         try:
             i = text.index(quote)
             return ''.join([
@@ -95,12 +84,30 @@ class DocFormatter:
             ])
         except:
             return text
+            
+    
+class DocFormatter:
+    def __init__(self, gold):
+        self._gold = gold
+        self._fmt = ContextFormatter()
+        self._template = string.Template("""
+            <div style="margin-left:2em">
+                <span style="font-variant:small-caps; font-size: 14pt;">${title}</style>
+                <span style="float:right; font-size: 10pt;">query: ${phrase}</span>
+                <hr>
+                <div style="font-variant:normal; font-size: 10pt;">${text}</div>
+            </div>
+            """)
+       
+    def format_context(self, doc):
+        return self._fmt.format_context(
+            self._gold.by_id[doc.unique_id]["match"])
         
-    def __call__(self, doc):
+    def format_doc(self, doc):
         return self._template.substitute(
             phrase=self._gold.by_id[doc.unique_id]["query"]["phrase"],
             title=doc.metadata["title"],
-            text=self.enhanced_doc_text(doc))
+            text=self.format_context(doc))
 
 
 def format_embedding_name(name):
@@ -109,12 +116,81 @@ def format_embedding_name(name):
     else:
         return name
 
+    
+def find_index_by_filter(terms, s):
+    candidates = []
+    for i, x in enumerate(terms):
+        if s in x:
+            candidates.append((i, x))
+    if not candidates:
+        raise ValueError(f"did not find '{s}' in {terms}")
+    return min(candidates, key=lambda x: len(x[1]))[0]
 
-class EmbeddingPlotter:
+    
+def browse(gold, initial_phrase=1, initial_context=1, rows=5):
+    formatter = ContextFormatter()
+    records = gold.items
+    
+    if isinstance(initial_phrase, str):
+        initial_phrase = find_index_by_filter(
+            gold.phrases, initial_phrase) + 1
+    
+    query_select = widgets.Select(
+        options=[(k, i) for i, k in enumerate(gold.phrases)],
+        value=initial_phrase - 1,
+        rows=rows,
+        description='phrase:')
+    
+    def query_contexts():
+        matches = records[query_select.value]["matches"]
+        return [(x["work"], i) for i, x in enumerate(matches)]
+    
+    if isinstance(initial_context, str):
+        initial_context = find_index_by_filter(
+            [x[0] for x in query_contexts()], initial_context) + 1
+
+    context_select = widgets.Select(
+        options=query_contexts(),
+        value=initial_context - 1,
+        rows=rows,
+        description='occurs in:')
+    
+    context_display = widgets.HTML("", description="as:")
+    
+    def on_phrase_change(change):
+        context_select.unobserve(on_context_change)
+        context_select.options = query_contexts()
+        context_select.value = 0
+        context_select.observe(on_context_change)
+        on_context_change(None)
+
+    def on_context_change(change):
+        matches = records[query_select.value]["matches"]
+        works = query_contexts()
+        i = context_select.value
+        context_display.value = formatter.format_context(matches[i])
+        
+    query_select.observe(on_phrase_change)
+    context_select.observe(on_context_change)
+    on_context_change(None)
+    
+    return widgets.HBox([query_select, context_select, context_display])    
+    
+    
+class TSNECallback(openTSNE.callbacks.Callback):
+    def optimization_about_to_start(self):
+        pass
+
+    def __call__(self, iteration, error, embedding):
+        pass
+    
+
+class EmbeddingPlotter:    
     def __init__(self, session, nlp, gold, aggregator):
         self._session = session
         self._nlp = nlp
         self._gold = gold
+        self._current_selection = None
 
         self._id_to_doc = dict((doc.unique_id, doc) for doc in self._session.documents)
         self._doc_formatter = DocFormatter(gold)
@@ -155,15 +231,19 @@ class EmbeddingPlotter:
             @context
             """
     
-        self._doc_tsne = TSNE(
+        tsne_callback = TSNECallback()
+    
+        self._doc_tsne = openTSNE.TSNE(
             perplexity=30,
             metric="cosine",
+            callbacks=tsne_callback,
             n_jobs=2,
             random_state=42)
 
-        self._tok_tsne = TSNE(
+        self._tok_tsne = openTSNE.TSNE(
             perplexity=50,  # 10
             metric="cosine",
+            callbacks=tsne_callback,
             n_jobs=2,
             random_state=42)
         
@@ -204,7 +284,7 @@ class EmbeddingPlotter:
                 query_docs.append(doc)
                 works.append(m["work"])
                 phrases.append(q['phrase'])
-                contexts.append(self._doc_formatter.enhanced_doc_text(doc))
+                contexts.append(self._doc_formatter.format_context(doc))
 
         data = {
             'work': works,
@@ -251,12 +331,21 @@ class EmbeddingPlotter:
             },
             'tokens': self._empty_token_data
         }
+    
+    @property
+    def selection(self):
+        return self._current_selection
         
-    def mk_plot(self, bokeh_doc):
+    def mk_plot(self, bokeh_doc, encoder=0, selection=[], locator=None, has_tok_emb=True):
+        encoder_names = sorted(self.encoders.keys())
+        
+        if isinstance(encoder, str):
+            encoder = find_index_by_filter(encoder_names, encoder)
+        
         embedding_select = bokeh.models.Select(
             title="",
-            value=sorted(self.encoders.keys())[0],
-            options=sorted(self.encoders.keys()),
+            value=encoder_names[encoder],
+            options=encoder_names,
             margin=(0, 20, 0, 0))
         
         intruder_select = bokeh.models.Select(
@@ -272,7 +361,6 @@ class EmbeddingPlotter:
 
         options_cb = bokeh.models.CheckboxButtonGroup(
             labels=["legend"], active=[0])
-        
 
         source = dict((k, bokeh.models.ColumnDataSource(v)) for k, v in self._compute_source_data(
             embedding_select.value, "").items())
@@ -282,36 +370,38 @@ class EmbeddingPlotter:
             palette=bokeh.palettes.Category20[len(self._gold.phrases)],
             factors=self._gold.phrases)
 
-        
-        tok_emb_p = bokeh.plotting.figure(
-            plot_width=400, plot_height=600,
-            title=f"Token Embeddings",
-            toolbar_location="right",
-            tools="pan,wheel_zoom,box_zoom,reset",
-            tooltips=self._tok_emb_tooltips,
-            visible=False)
-        
-        tok_emb_p.circle(
-            source=source['tokens'],
-            size=10,
-            #legend_field='query',
-            color=cmap,
-            alpha=0.8)
-        
-        tok_emb_status = bokeh.models.Div(text="")
-        
-        token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
-            x_offset=5, y_offset=5, source=source['tokens'],
-            render_mode='canvas', text_font_size='6pt')
-        tok_emb_p.add_layout(token_labels)
-        
+        if has_tok_emb:
+            tok_emb_p = bokeh.plotting.figure(
+                plot_width=400, plot_height=600,
+                title=f"Token Embeddings",
+                toolbar_location="right",
+                tools="pan,wheel_zoom,box_zoom,reset",
+                tooltips=self._tok_emb_tooltips,
+                visible=False)
+
+            tok_emb_p.circle(
+                source=source['tokens'],
+                size=10,
+                #legend_field='query',
+                color=cmap,
+                alpha=0.8)
+
+            tok_emb_status = bokeh.models.Div(text="")
+
+            token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
+                x_offset=5, y_offset=5, source=source['tokens'],
+                render_mode='canvas', text_font_size='6pt')
+            tok_emb_p.add_layout(token_labels)
+        else:
+            tok_emb_p = None
+            tok_emb_status = None        
         
         doc_emb_p = bokeh.plotting.figure(
             plot_width=600, plot_height=600,
             title=f"Document Embeddings",
-            toolbar_location="left",
-            tools="pan, lasso_select, box_select",
-            active_drag="lasso_select",
+            toolbar_location="left" if has_tok_emb else "below",
+            tools="pan, wheel_zoom, lasso_select, box_select" if has_tok_emb else "pan, wheel_zoom",
+            active_drag="lasso_select" if has_tok_emb else "pan",
             tooltips=self._doc_emb_tooltips)
                 
         doc_emb_p.circle(
@@ -333,9 +423,14 @@ class EmbeddingPlotter:
         
 
         def set_tok_emb_status(text):
+            if tok_emb_status is None:
+                return
             tok_emb_status.text = f"""<p style="width:100%; font-weight: bold; text-align:center;">{text}</p>"""
 
         def update_token_plot(max_token_count=750):
+            if tok_emb_p is None:
+                return
+            
             embedding = self.encoders[embedding_select.value].embedding
             if embedding is None:
                 clear_token_plot()
@@ -345,6 +440,8 @@ class EmbeddingPlotter:
             if not selected:
                 clear_token_plot()
                 return
+            
+            self._current_selection = [self._docs[i].doc.unique_id for i in selected]
             
             token_embedding_data = []
             
@@ -424,10 +521,14 @@ class EmbeddingPlotter:
             update_token_plot()
                 
         def clear_token_plot():
+            if tok_emb_p is None:
+                return
+
             source['tokens'].data = self._empty_token_data
             tok_emb_p.visible = False
             tok_emb_status.visible = True
             tok_emb_status.text = ""
+            self._current_selection = None
             
         def trigger_token_plot_update(tok_plot_state):
             if self._tok_plot_state == tok_plot_state:
@@ -453,19 +554,81 @@ class EmbeddingPlotter:
         source['docs'].js_on_change("data", bokeh.models.CustomJS(args={'p': doc_emb_p}, code="""
             p.reset.emit();
         """))
-        source['tokens'].js_on_change("data", bokeh.models.CustomJS(args={'p': tok_emb_p}, code="""
-            p.reset.emit();
-        """))
-        
-        bokeh_doc.add_root(bokeh.layouts.column(
-            bokeh.layouts.column(embedding_select, query_tabs, background="#F0F0F0"),
-            bokeh.layouts.row(
-                doc_emb_p,
-                bokeh.layouts.column(tok_emb_status, tok_emb_p)),
-            options_cb,
-            sizing_mode="stretch_width"))
-            
+        if tok_emb_p is not None:
+            source['tokens'].js_on_change("data", bokeh.models.CustomJS(args={'p': tok_emb_p}, code="""
+                p.reset.emit();
+            """))
+                
+        if selection:
+            id_to_index = dict((doc_data.doc.unique_id, i) for i, doc_data in enumerate(self._docs))
+            source['docs'].selected.indices = [id_to_index[x] for x in selection]
 
+        if locator is not None:
+            if isinstance(locator, str):
+                locator = ("free", locator)
+            locator_type, locator_s = locator
+            if locator_type == "fixed":
+                intruder_select.value = self._gold.phrases[find_index_by_filter(
+                    self._gold.phrases, locator_s)]
+                query_tabs.active = 1
+            elif locator_type == "free":
+                intruder_free.value = locator_s
+                query_tabs.active = 2
+            else:
+                raise ValueError(locator_type)
+        
+        if tok_emb_p is not None:
+            main_widget = bokeh.layouts.row(
+                doc_emb_p,
+                bokeh.layouts.column(tok_emb_status, tok_emb_p))
+        else:
+            main_widget = doc_emb_p
+        
+        return bokeh.layouts.column(
+            bokeh.layouts.column(embedding_select, query_tabs, background="#F0F0F0"),
+            main_widget,
+            options_cb,
+            sizing_mode="stretch_width")
+    
+
+                
+def plot_doc_embeddings(session, nlp, gold, plot_args, aggregator=np.mean, extra_encoders={}):
+    plotters = []
+    
+    for args in plot_args:
+        plotter = EmbeddingPlotter(session, nlp, gold, aggregator)
+        for k, v in extra_encoders.items():
+            plotter.encoders[k] = v
+        plotters.append(plotter)
+
+    def add_root(bokeh_doc):
+        widgets = []
+        for plotter, kwargs in zip(plotters, plot_args):
+            widgets.append(plotter.mk_plot(bokeh_doc, **kwargs))
+            
+        bokeh_doc.add_root(bokeh.layouts.row(widgets))
+            
+    bokeh.io.show(add_root)
+    return plotters
+            
+            
+class DocEmbeddingExplorer:
+    def __init__(self, **base_args):
+        self._aggregator = widgets.Dropdown(
+            description="token embedding aggregator:",
+            style = {'description_width': 'initial', 'width': 'max'},
+            options=[("mean", np.mean), ("median", np.median), ("max", np.max), ("min", np.min)])
+        display(self._aggregator)
+        self._base_args = base_args
+        
+    def plot(self, args):
+        return plot_doc_embeddings(
+            plot_args=args,
+            aggregator=self._aggregator.value,
+            **self._base_args)
+
+        
+        
 class TokenSimilarityPlotter:
     def _create_data(self, doc, ref_token, embedding):
         token_sim = TokenSimilarity(
@@ -509,9 +672,7 @@ class TokenSimilarityPlotter:
         query = prepare_docs([query], self._nlp)[0]
         ref_token = list(query.spans(self._partition))[0][0]
         
-        doc_id = self._gold.doc_digest_to_ids[self._doc_select.value]
-        found = [x for x in self._session.documents if x.unique_id == doc_id]
-        doc = found[0]
+        doc = self._doc_id_to_doc[self._doc_select.value]
 
         data = []
         for figure in self._figures:
@@ -540,21 +701,29 @@ class TokenSimilarityPlotter:
         p = self._figures[0]['figure']
         p.yaxis.axis_label = state['label']
             
-    def __init__(self, session, nlp, gold, n_figures=2, top_n=15):
+    def __init__(self, session, nlp, gold, token, initial_doc=0, n_figures=2, top_n=15):
         self._session = session
         self._nlp = nlp
         self._gold = gold
         
-        doc_digests = list(gold.doc_digest_to_ids.keys())
-        self._embedding_names = sorted(session.embeddings.keys())
+        doc_digests = sorted(gold.doc_digests(), key=lambda x: x[0])
+        self._doc_id_to_doc = dict((x.unique_id, x) for x in self._session.documents)
+        self._embedding_names = sorted(session.embeddings.keys(), key=lambda x: len(x))
+        
+        if isinstance(initial_doc, str):
+            i = find_index_by_filter([x[0] for x in doc_digests], initial_doc)
+            initial_select_value = doc_digests[i][1]
+        else:
+            initial_select_value = doc_digests[initial_doc][1]
 
         self._figures = None
         self._n_figures = min(n_figures, len(session.embeddings))
         self._height_per_token = 20
         self._top_n = top_n
         
-        self._token_text = bokeh.models.TextInput(value="high")
-        self._doc_select = bokeh.models.Select(options=doc_digests, value=doc_digests[0])
+        self._token_text = bokeh.models.TextInput(value=token)
+        self._doc_select = bokeh.models.Select(
+            options=[(v, k) for k, v in doc_digests], value=initial_select_value)
         #self._top_n = bokeh.models.Slider(start=5, end=100, step=5, value=15, title="top n")
 
         self._partition = session.partition("document")
@@ -624,8 +793,8 @@ class TokenSimilarityPlotter:
         ))
 
             
-def plot_token_similarity(session, nlp, gold, n_figures=2, top_n=15):
-    plotter = TokenSimilarityPlotter(session, nlp, gold, n_figures=n_figures, top_n=top_n)
+def plot_token_similarity(session, nlp, gold, token="high", doc=0, n_figures=2, top_n=15):
+    plotter = TokenSimilarityPlotter(session, nlp, gold, token, doc, n_figures=n_figures, top_n=top_n)
     bokeh.io.show(plotter.create)
     
 
@@ -835,7 +1004,7 @@ class ResultScoresPlotter:
                 'hue': base_hue[:],   
                 'rank': [str(i) for i in range(1, n + 1)],
                 'score': [m.score for m in result.matches],
-                'tooltip': [self._doc_formatter(m.prepared_doc) for m in result.matches]
+                'tooltip': [self._doc_formatter.format_doc(m.prepared_doc) for m in result.matches]
             }
         }
             
@@ -845,12 +1014,11 @@ class ResultScoresPlotter:
         else:
             self._create_plot(index, self._bokeh_doc)
             
-    def _on_tap(self, event):
-        i = math.floor(event.x)
+    def _select_rank(self, rank):
         source = self._source
         
         hue = source.data["base_hue"][:]
-        hue[i] = 0.1 if hue[i] < 0.5 else 0.9
+        hue[rank - 1] = 0.1 if hue[rank - 1] < 0.5 else 0.9
         source.data["hue"] = hue
               
         from vectorian.render.excerpt import ExcerptRenderer
@@ -861,8 +1029,12 @@ class ResultScoresPlotter:
             [ExcerptRenderer()],
             LocationFormatter())
         
-        html = renderer.to_html([self._result.matches[i]])
+        html = renderer.to_html([self._result.matches[rank - 1]])
         self._result_html.value = html
+            
+    def _on_tap(self, event):
+        i = math.floor(event.x)
+        self._select_rank(i + 1)
         
     def on_update(self):
         qr = self._run_query()
@@ -870,7 +1042,7 @@ class ResultScoresPlotter:
         self._source.data = qr["data"]
         self._result_html.value = ""
         
-    def create_plot(self, index, bokeh_doc):
+    def create_plot(self, index, bokeh_doc, rank=None):
         plot_width = 1200
         tooltips = """
             @tooltip
@@ -904,11 +1076,86 @@ class ResultScoresPlotter:
 
         bokeh_doc.add_root(bokeh.layouts.column(self._query_select, p))
         self._bokeh_doc = bokeh_doc
-
+        
         self._result_html = widgets.HTML("")
         display(self._result_html)
 
+        if rank:
+            self._select_rank(rank)
 
-def plot_results(gold, index, query=None):
+def plot_results(gold, index, query=None, rank=None):
     plotter = ResultScoresPlotter(gold, index, query)
-    bokeh.io.show(functools.partial(plotter.create_plot, index))
+    bokeh.io.show(functools.partial(plotter.create_plot, index, rank=rank))
+
+    
+def plot_gold(gold):
+    G = nx.Graph()
+
+    color = {}
+    subset = {}
+    
+    phrase = {}
+    context = {}
+    
+    formatter = ContextFormatter()
+    palette = bokeh.palettes.Spectral4
+
+    doc_template = string.Template("""
+        <div style="margin-left:2em">
+            <span style="font-variant:small-caps; font-size: 14pt;">${title}</style>
+            <span style="float:right; font-size: 10pt;">query: ${phrase}</span>
+            <hr>
+            <div style="font-variant:normal; font-size: 10pt;">${text}</div>
+        </div>
+        """)
+    
+    for i, record in enumerate(gold.items):
+        G.add_node(record["phrase"])
+        color[record["phrase"]] = palette[0]
+        subset[record["phrase"]] = i
+        
+        phrase_html = f'<i>{record["phrase"]}</i>'
+        phrase[record["phrase"]] = phrase_html
+        context[record["phrase"]] = ""
+
+        for m in record["matches"]:
+            phrase[m["id"]] = ""  # phrase_html + "<hr>"
+            context[m["id"]] = doc_template.substitute(
+                title=m["work"],
+                phrase=record["phrase"],
+                text=formatter.format_context(m))
+
+            G.add_edge(record["phrase"], m["id"])
+            color[m["id"]] = palette[1]
+            subset[m["id"]] = i
+
+    nx.set_node_attributes(G, color, "node_color")
+    nx.set_node_attributes(G, subset, "subset")
+    nx.set_node_attributes(G, phrase, "phrase")
+    nx.set_node_attributes(G, context, "context")
+            
+    plot = bokeh.models.Plot(
+        plot_width=1000, plot_height=400,
+        x_range=bokeh.models.Range1d(-1.1, 1.1), y_range=bokeh.models.Range1d(-0.8, 0.8))
+    
+    node_hover_tool = bokeh.models.HoverTool(
+        tooltips="""
+        @phrase
+        @context
+        """)
+    plot.add_tools(node_hover_tool)
+
+    graph_renderer = bokeh.plotting.from_networkx(G, nx.multipartite_layout, scale=1, center=(0, 0))
+    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size=12, fill_color="node_color")
+    graph_renderer.edge_renderer.glyph = bokeh.models.MultiLine(line_color="black", line_alpha=1, line_width=1.5)
+    plot.renderers.append(graph_renderer)
+
+    '''
+    token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
+        x_offset=5, y_offset=5, source=source['tokens'],
+        render_mode='canvas', text_font_size='6pt')
+    tok_emb_p.add_layout(token_labels)
+    '''
+    
+    bokeh.io.show(plot)
+    
