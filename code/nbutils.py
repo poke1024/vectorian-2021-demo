@@ -24,6 +24,7 @@ import bokeh.layouts
 from functools import partial
 from cached_property import cached_property
 from IPython.core.display import HTML, display
+from bs4 import BeautifulSoup
 
 from vectorian.embeddings import TokenEmbeddingAggregator, prepare_docs
 from vectorian.embeddings import CachedPartitionEncoder
@@ -262,6 +263,9 @@ class EmbeddingPlotter:
         }
         
         self._tok_plot_state = 0
+
+        self._figures = []
+        self._figures_html = []
         
     @property
     def partition(self):
@@ -340,33 +344,64 @@ class EmbeddingPlotter:
     @property
     def selection(self):
         return self._current_selection
+    
+    def _update_figures_html(self):
+        if not self._figures:
+            return
         
+        script, divs = bokeh.embed.components(self._figures)
+        for html, div in zip(self._figures_html, divs):
+            html.value = div
+            
+        script_code = []
+        for x in BeautifulSoup(script, features="html.parser").findAll("script"):
+            script_code.append(x.string)
+        self._pw.js_init("\n".join(script_code))
+                
     def mk_plot(self, bokeh_doc, encoder=0, selection=[], locator=None, has_tok_emb=True):
         encoder_names = sorted(self.encoders.keys())
         
         if isinstance(encoder, str):
             encoder = find_index_by_filter(encoder_names, encoder)
         
-        embedding_select = bokeh.models.Select(
-            title="",
-            value=encoder_names[encoder],
-            options=encoder_names,
-            margin=(0, 20, 0, 0))
-        
-        intruder_select = bokeh.models.Select(
-            title="",
-            value=self._gold.phrases[0],
-            options=self._gold.phrases)
-        intruder_free = bokeh.models.TextInput(value="", title="")
+        if _has_bokeh_server:
+            embedding_select = bokeh.models.Select(
+                title="",
+                value=encoder_names[encoder],
+                options=encoder_names,
+                margin=(0, 20, 0, 0))
 
-        query_tab1 = bokeh.models.Panel(child=bokeh.models.Div(text=""), title="no locator")
-        query_tab2 = bokeh.models.Panel(child=intruder_select, title="fixed locator")
-        query_tab3 = bokeh.models.Panel(child=intruder_free, title="free locator")
-        query_tabs = bokeh.models.Tabs(tabs=[query_tab1, query_tab2, query_tab3])
+            intruder_select = bokeh.models.Select(
+                title="",
+                value=self._gold.phrases[0],
+                options=self._gold.phrases)
+            intruder_free = bokeh.models.TextInput(value="", title="")
 
-        options_cb = bokeh.models.CheckboxButtonGroup(
-            labels=["legend"], active=[0])
+            query_tab1 = bokeh.models.Panel(child=bokeh.models.Div(text=""), title="no locator")
+            query_tab2 = bokeh.models.Panel(child=intruder_select, title="fixed locator")
+            query_tab3 = bokeh.models.Panel(child=intruder_free, title="free locator")
+            query_tabs = bokeh.models.Tabs(tabs=[query_tab1, query_tab2, query_tab3])
 
+            options_cb = bokeh.models.CheckboxButtonGroup(
+                labels=["legend"], active=[0])
+        else:
+            embedding_select = widgets.Dropdown(
+                value=encoder_names[encoder],
+                options=encoder_names)
+            
+            intruder_select = widgets.Dropdown(
+                value=self._gold.phrases[0],
+                options=self._gold.phrases)
+            intruder_free = widgets.Text(value="")
+            
+            query_tab1 = widgets.HTML("")
+            query_tab2 = intruder_select
+            query_tab3 = intruder_free
+            query_tabs = widgets.Tab(children=[query_tab1, query_tab2, query_tab3])
+            query_tabs.set_title(0, "no locator")
+            query_tabs.set_title(1, "fixed locator")
+            query_tabs.set_title(2, "free locator")
+            
         source = dict((k, bokeh.models.ColumnDataSource(v)) for k, v in self._compute_source_data(
             embedding_select.value, "").items())
         
@@ -382,7 +417,7 @@ class EmbeddingPlotter:
                 toolbar_location="right",
                 tools="pan,wheel_zoom,box_zoom,reset",
                 tooltips=self._tok_emb_tooltips,
-                visible=False)
+                visible=True)
 
             tok_emb_p.circle(
                 source=source['tokens'],
@@ -391,7 +426,11 @@ class EmbeddingPlotter:
                 color=cmap,
                 alpha=0.8)
 
-            tok_emb_status = bokeh.models.Div(text="")
+            if _has_bokeh_server:
+                tok_emb_status = bokeh.models.Div(text="")
+            else:
+                tok_emb_status = widgets.Label(text="")
+                tok_emb_update = widgets.Button(description="update")
 
             token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
                 x_offset=5, y_offset=5, source=source['tokens'],
@@ -426,12 +465,33 @@ class EmbeddingPlotter:
         #doc_emb_p.add_layout(legend, 'right')
         doc_emb_p.legend.items = []        
         
-
-        def set_tok_emb_status(text):
-            if tok_emb_status is None:
-                return
-            tok_emb_status.text = f"""<p style="width:100%; font-weight: bold; text-align:center;">{text}</p>"""
-
+        
+        def set_tok_emb_status(status):
+            if _has_bokeh_server:
+                if status == "ok":
+                    tok_emb_p.visible = True
+                    if tok_emb_status:
+                        tok_emb_status.visible = False
+                else:
+                    tok_emb_p.visible = False
+                    if tok_emb_status:
+                        tok_emb_status.visible = True
+                        tok_emb_status.text = f"""<p style="width:100%; font-weight: bold; text-align:center;">{status}</p>"""
+            else:
+                fig = self._figures_html[1] if self._figures_html else None
+                if status == "ok":
+                    if fig:
+                        fig.layout.display = 'block'
+                    if tok_emb_status:
+                        tok_emb_status.layout.display = 'none'
+                else:
+                    if fig:
+                        fig.layout.display = 'none'
+                    if tok_emb_status:
+                        tok_emb_status.layout.display = 'block'
+                        tok_emb_status.text = f"""<p style="width:100%; font-weight: bold; text-align:center;">{status}</p>"""                
+        set_tok_emb_status("")
+                        
         def update_token_plot(max_token_count=750):
             if tok_emb_p is None:
                 return
@@ -505,9 +565,11 @@ class EmbeddingPlotter:
                 'work': [x['work'] for x in token_embedding_data],
                 'context': [x['context'] for x in token_embedding_data]
             }
-
-            tok_emb_p.visible = True
-            tok_emb_status.visible = False
+            
+            set_tok_emb_status("ok")
+            
+            if not _has_bokeh_server:
+                self._update_figures_html()
             
         def toggle_legend(attr, old, new):
             if 0 in options_cb.active:
@@ -515,46 +577,76 @@ class EmbeddingPlotter:
             else:
                 legend.visible = False
                 
-        def update_document_embedding_plot(attr, old, new):
-            if query_tabs.active == 0:
+        def update_document_embedding_plot():
+            if _has_bokeh_server:
+                active = query_tabs.active
+            else:
+                active = query_tabs.selected_index                
+            
+            if active == 0:
                 intruder = ""
             else:
-                intruder = [intruder_select, intruder_free][query_tabs.active - 1].value
+                intruder = [intruder_select, intruder_free][active - 1].value
             for k, v in self._compute_source_data(
                 embedding_select.value, intruder).items():
                 source[k].data = v
             update_token_plot()
-                
+
+            if not _has_bokeh_server:
+                self._update_figures_html()
+            
         def clear_token_plot():
             if tok_emb_p is None:
                 return
 
             source['tokens'].data = self._empty_token_data
-            tok_emb_p.visible = False
-            tok_emb_status.visible = True
-            tok_emb_status.text = ""
+            set_tok_emb_status("")
             self._current_selection = None
-            
+                        
         def trigger_token_plot_update(tok_plot_state):
             if self._tok_plot_state == tok_plot_state:
                 update_token_plot()
+                            
+        if _has_bokeh_server:
+            options_cb.visible = False  # broken in bokeh
+            
+            def update_document_embedding_plot_shim(attr, old, new):
+                update_document_embedding_plot()
 
-        def selection_change(attr, old, new):
-            clear_token_plot()
-            set_tok_emb_status("Computing. Please Wait...")
-            self._tok_plot_state += 1
-            bokeh_doc.add_timeout_callback(functools.partial(
-                trigger_token_plot_update, self._tok_plot_state), 500)
-                        
-                
-        options_cb.visible = False  # broken in bokeh
-                
-        embedding_select.on_change("value", update_document_embedding_plot)
-        intruder_select.on_change("value", update_document_embedding_plot)
-        intruder_free.on_change("value", update_document_embedding_plot)
-        query_tabs.on_change("active", update_document_embedding_plot)
-        source['docs'].selected.on_change('indices', selection_change)
-        options_cb.on_change("active", toggle_legend)
+            embedding_select.on_change("value", update_document_embedding_plot_shim)
+            intruder_select.on_change("value", update_document_embedding_plot_shim)
+            intruder_free.on_change("value", update_document_embedding_plot_shim)
+            query_tabs.on_change("active", update_document_embedding_plot_shim)
+
+            options_cb.on_change("active", toggle_legend)
+        else:
+            def update_document_embedding_plot_shim(changed):
+                update_document_embedding_plot()
+
+            embedding_select.observe(update_document_embedding_plot_shim, names="value")
+            intruder_select.observe(update_document_embedding_plot_shim, names="value")
+            intruder_free.observe(update_document_embedding_plot_shim, names="value")
+            query_tabs.observe(update_document_embedding_plot_shim, names="selected_index")
+
+        if _has_bokeh_server:
+            def selection_change(attr, old, new):
+                clear_token_plot()
+                set_tok_emb_status("Computing. Please Wait...")
+                self._tok_plot_state += 1
+                bokeh_doc.add_timeout_callback(functools.partial(
+                    trigger_token_plot_update, self._tok_plot_state), 500)
+
+            source['docs'].selected.on_change('indices', selection_change)
+        else:
+            source['docs'].selected.js_on_change('indices', bokeh.models.CustomJS(code="""
+                var indices = cb_obj.indices;
+            """))
+            
+            def on_update(changed):
+                #source['docs'].selected.indices = 
+                update_token_plot()
+            
+            tok_emb_update.on_click(on_update)
 
         source['docs'].js_on_change("data", bokeh.models.CustomJS(args={'p': doc_emb_p}, code="""
             p.reset.emit();
@@ -563,10 +655,13 @@ class EmbeddingPlotter:
             source['tokens'].js_on_change("data", bokeh.models.CustomJS(args={'p': tok_emb_p}, code="""
                 p.reset.emit();
             """))
-                
+            
         if selection:
             id_to_index = dict((doc_data.doc.unique_id, i) for i, doc_data in enumerate(self._docs))
             source['docs'].selected.indices = [id_to_index[x] for x in selection]
+            
+            if not _has_bokeh_server:
+                update_token_plot()
 
         if locator is not None:
             if isinstance(locator, str):
@@ -582,19 +677,45 @@ class EmbeddingPlotter:
             else:
                 raise ValueError(locator_type)
         
-        if tok_emb_p is not None:
-            main_widget = bokeh.layouts.row(
-                doc_emb_p,
-                bokeh.layouts.column(tok_emb_status, tok_emb_p))
+        if _has_bokeh_server:
+            if tok_emb_p is not None:
+                main_widget = bokeh.layouts.row(
+                    doc_emb_p,
+                    bokeh.layouts.column(tok_emb_status, tok_emb_p))
+            else:
+                main_widget = doc_emb_p
+
+            return bokeh.layouts.column(
+                bokeh.layouts.column(embedding_select, query_tabs, background="#F0F0F0"),
+                main_widget,
+                options_cb,
+                sizing_mode="stretch_width")
         else:
-            main_widget = doc_emb_p
-        
-        return bokeh.layouts.column(
-            bokeh.layouts.column(embedding_select, query_tabs, background="#F0F0F0"),
-            main_widget,
-            options_cb,
-            sizing_mode="stretch_width")
-    
+            self._figures = []
+            self._figures_html = []
+
+            self._figures.append(doc_emb_p)
+            self._figures_html.append(widgets.HTML(""))
+
+            if tok_emb_p is not None:
+                self._figures.append(tok_emb_p)
+                self._figures_html.append(widgets.HTML(""))
+            
+            if len(self._figures_html) == 2:
+                main_widget = widgets.HBox([
+                    self._figures_html[0],
+                    widgets.VBox([tok_emb_status, tok_emb_update, self._figures_html[1]])])
+            else:
+                main_widget = self._figures_html[0]
+
+            self._pw = jp_proxy_widget.JSProxyWidget()
+            self._pw.element.empty()
+            display(self._pw)
+                                        
+            return widgets.VBox([
+                widgets.VBox([embedding_select, query_tabs]),
+                main_widget])
+                
 
                 
 def plot_doc_embeddings(session, nlp, gold, plot_args, aggregator=np.mean, extra_encoders={}):
@@ -606,14 +727,23 @@ def plot_doc_embeddings(session, nlp, gold, plot_args, aggregator=np.mean, extra
             plotter.encoders[k] = v
         plotters.append(plotter)
 
-    def add_root(bokeh_doc):
-        widgets = []
-        for plotter, kwargs in zip(plotters, plot_args):
-            widgets.append(plotter.mk_plot(bokeh_doc, **kwargs))
-            
-        bokeh_doc.add_root(bokeh.layouts.row(widgets))
-            
-    bokeh.io.show(add_root)
+    if _has_bokeh_server:
+        def add_root(bokeh_doc):
+            widgets = []
+            for plotter, kwargs in zip(plotters, plot_args):
+                widgets.append(plotter.mk_plot(bokeh_doc, **kwargs))
+
+            bokeh_doc.add_root(bokeh.layouts.row(widgets))
+
+        bokeh.io.show(add_root)
+    else:
+        plots = [
+            plotter.mk_plot(None, **kwargs)
+            for plotter, kwargs in zip(plotters, plot_args)]
+        display(widgets.HBox(plots))
+        for p in plotters:
+            p._update_figures_html()
+        
     return plotters
             
             
@@ -802,11 +932,8 @@ class TokenSimilarityPlotter:
         for html, div in zip(self._figures_html, divs):
             html.value = div
 
-        script_tree = ET.fromstring(script)
-        assert script_tree.tag == "script"
-        
-        #display(IPython.core.display.Javascript(script_tree.text))
-        self._pw.js_init(script_tree.text)
+        for x in BeautifulSoup(script, features="html.parser").findAll("script"):
+            self._pw.js_init(x.string)
         
     def create(self, bokeh_doc):
         self._figures = [self._create_figure_record(i) for i in range(self._n_figures)]
