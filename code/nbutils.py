@@ -6,11 +6,14 @@ import sklearn.metrics
 import itertools
 import functools
 import ipywidgets as widgets
+import jp_proxy_widget
 import requests
 import markdown
 import openTSNE
 import openTSNE.callbacks
 import networkx as nx
+import IPython.core.display
+import xml.etree.ElementTree as ET
 
 import bokeh.plotting
 import bokeh.models
@@ -27,7 +30,9 @@ from vectorian.embeddings import CachedPartitionEncoder
 from vectorian.index import DummyIndex
 from vectorian.metrics import TokenSimilarity, CosineSimilarity
 from vectorian.interact import PartitionMetricWidget
-    
+
+
+_has_bokeh_server = False
 
 class Gold:
     def __init__(self, data):
@@ -700,6 +705,9 @@ class TokenSimilarityPlotter:
 
         p = self._figures[0]['figure']
         p.yaxis.axis_label = state['label']
+        
+        if not _has_bokeh_server:
+            self._update_figures_html()
             
     def __init__(self, session, nlp, gold, token, initial_doc=0, n_figures=2, top_n=15):
         self._session = session
@@ -721,24 +729,35 @@ class TokenSimilarityPlotter:
         self._height_per_token = 20
         self._top_n = top_n
         
-        self._token_text = bokeh.models.TextInput(value=token)
-        self._doc_select = bokeh.models.Select(
-            options=[(v, k) for k, v in doc_digests], value=initial_select_value)
-        #self._top_n = bokeh.models.Slider(start=5, end=100, step=5, value=15, title="top n")
+        if _has_bokeh_server:        
+            self._token_text = bokeh.models.TextInput(value=token)
+            self._doc_select = bokeh.models.Select(
+                options=[(v, k) for k, v in doc_digests], value=initial_select_value)
+            #self._top_n = bokeh.models.Slider(start=5, end=100, step=5, value=15, title="top n")
+
+            self._token_text.on_change("value", lambda attr, old, new: self._update())
+            self._doc_select.on_change("value", lambda attr, old, new: self._update())
+            #self._top_n.on_change("value", lambda attr, old, new: self._update())
+        else:
+            self._token_text = widgets.Text(value=token)
+            self._doc_select = widgets.Dropdown(options=doc_digests, value=initial_select_value)
+            self._token_text.observe(lambda change: self._update(), names='value')
+            self._doc_select.observe(lambda change: self._update(), names='value')
 
         self._partition = session.partition("document")
         
-        self._token_text.on_change("value", lambda attr, old, new: self._update())
-        self._doc_select.on_change("value", lambda attr, old, new: self._update())
-        #self._top_n.on_change("value", lambda attr, old, new: self._update())
-
         self._color_mapper = bokeh.models.LinearColorMapper(
             palette="Viridis256", low=0, high=1)
         
     def _create_figure_record(self, index):
-        embedding_select = bokeh.models.Select(
-            options=self._embedding_names, value=self._embedding_names[index])
-        embedding_select.on_change("value", lambda attr, old, new: self._update(index=index))
+        if _has_bokeh_server:        
+            embedding_select = bokeh.models.Select(
+                options=self._embedding_names, value=self._embedding_names[index])
+            embedding_select.on_change("value", lambda attr, old, new: self._update(index=index))
+        else:
+            embedding_select = widgets.Dropdown(
+                options=self._embedding_names, value=self._embedding_names[index])
+            embedding_select.observe(lambda change: self._update(index=index), names='value')
         
         return {
             'source': None,
@@ -771,6 +790,24 @@ class TokenSimilarityPlotter:
         figure['source'] = source
         figure['figure'] = p
         
+    def _configure_figures(self, state):
+        p = self._figures[0]['figure']
+        p.yaxis.axis_label = state['label']
+        for x in self._figures:
+            p = x['figure']
+            p.xaxis.axis_label = "cosine similarity"
+            
+    def _update_figures_html(self):
+        script, divs = bokeh.embed.components([x['figure'] for x in self._figures])
+        for html, div in zip(self._figures_html, divs):
+            html.value = div
+
+        script_tree = ET.fromstring(script)
+        assert script_tree.tag == "script"
+        
+        #display(IPython.core.display.Javascript(script_tree.text))
+        self._pw.js_init(script_tree.text)
+        
     def create(self, bokeh_doc):
         self._figures = [self._create_figure_record(i) for i in range(self._n_figures)]
         
@@ -779,25 +816,35 @@ class TokenSimilarityPlotter:
         for figure, data in zip(self._figures, state['data']):
             self._init_figure_record(figure, data)
 
-        p = self._figures[0]['figure']
-        p.yaxis.axis_label = state['label']
-        for x in self._figures:
-            p = x['figure']
-            p.xaxis.axis_label = "cosine similarity"
+        self._configure_figures(state)
             
-        bokeh_doc.add_root(bokeh.layouts.column(
-            self._token_text,
-            self._doc_select,
-            bokeh.layouts.row(*[
-                bokeh.layouts.column(x['embedding_select'], x['figure']) for x in self._figures])
-        ))
+        if bokeh_doc:
+            bokeh_doc.add_root(bokeh.layouts.column(
+                self._token_text,
+                self._doc_select,
+                bokeh.layouts.row(*[
+                    bokeh.layouts.column(x['embedding_select'], x['figure']) for x in self._figures])
+            ))
+        else:
+            self._figures_html = [widgets.HTML("") for _ in self._figures]
+            
+            columns = [widgets.VBox([x['embedding_select'], html]) for x, html in zip(self._figures, self._figures_html)]
+            display(widgets.VBox([self._token_text, self._doc_select, widgets.HBox(columns)]))
+            
+            self._pw = jp_proxy_widget.JSProxyWidget()
+            self._pw.element.empty()
+            display(self._pw)
+            
+            self._update_figures_html()
 
             
 def plot_token_similarity(session, nlp, gold, token="high", doc=0, n_figures=2, top_n=15):
     plotter = TokenSimilarityPlotter(session, nlp, gold, token, doc, n_figures=n_figures, top_n=top_n)
-    bokeh.io.show(plotter.create)
+    if _has_bokeh_server:
+        bokeh.io.show(plotter.create)
+    else:
+        plotter.create(None)
     
-
     
 def dcg(rel, n):
     #return sum(rel[i - 1] / math.log2(i + 1) for i in range(1, n + 1))
