@@ -35,6 +35,19 @@ from vectorian.interact import PartitionMetricWidget
 
 _has_bokeh_server = False
 
+def initialize(has_bokeh_server=False):
+    _has_bokeh_server = has_bokeh_server
+    
+    
+def make_limited_function_warning_widget(action_text):
+    info_text = ("This visualization has limited interactivity due to technical constraints.<br>" +
+        "Run this notebook on a local Jupyter installation (with Bokeh server support) in order to " +
+        f"interactively {action_text}.")
+    return widgets.HTML(
+        value=f'<b><p style="text-align:center"><font color="red">{info_text}</p></b>',
+        layout=widgets.Layout(border='solid 1px red'))
+
+    
 class Gold:
     def __init__(self, data):
         self._data = data
@@ -430,7 +443,7 @@ class EmbeddingPlotter:
                 tok_emb_status = bokeh.models.Div(text="")
             else:
                 tok_emb_status = widgets.Label(text="")
-                tok_emb_update = widgets.Button(description="update")
+                #tok_emb_update = widgets.Button(description="update")
 
             token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
                 x_offset=5, y_offset=5, source=source['tokens'],
@@ -444,8 +457,8 @@ class EmbeddingPlotter:
             plot_width=600, plot_height=600,
             title=f"Document Embeddings",
             toolbar_location="left" if has_tok_emb else "below",
-            tools="pan, wheel_zoom, lasso_select, box_select" if has_tok_emb else "pan, wheel_zoom",
-            active_drag="lasso_select" if has_tok_emb else "pan",
+            tools="pan, wheel_zoom, lasso_select, box_select" if (has_tok_emb and _has_bokeh_server) else "pan, wheel_zoom",
+            active_drag="lasso_select" if (has_tok_emb and _has_bokeh_server) else "pan",
             tooltips=self._doc_emb_tooltips)
                 
         doc_emb_p.circle(
@@ -638,16 +651,32 @@ class EmbeddingPlotter:
 
             source['docs'].selected.on_change('indices', selection_change)
         else:
+            '''
             source['docs'].selected.js_on_change('indices', bokeh.models.CustomJS(code="""
                 var indices = cb_obj.indices;
+                window.global_hack = indices; // FIXME
+                //console.log("put", window.global_hack);
             """))
             
+            self._selected_indices = []
+            
+            def set_selection(data):
+                # print("?", set_selection, data)
+                self._selected_indices = data
+            
             def on_update(changed):
-                #source['docs'].selected.indices = 
+                self._pw.js_init("""
+                    //console.log("get", window.global_hack);
+                    set_selection(window.global_hack); // FIXME
+                """, set_selection=set_selection)
+                
+                #print(self._selected_indices)
+                source['docs'].selected.indices = self._selected_indices
                 update_token_plot()
             
-            tok_emb_update.on_click(on_update)
-
+            # tok_emb_update.on_click(on_update)
+            '''
+        
         source['docs'].js_on_change("data", bokeh.models.CustomJS(args={'p': doc_emb_p}, code="""
             p.reset.emit();
         """))
@@ -679,15 +708,15 @@ class EmbeddingPlotter:
         
         if _has_bokeh_server:
             if tok_emb_p is not None:
-                main_widget = bokeh.layouts.row(
+                figure_widget = bokeh.layouts.row(
                     doc_emb_p,
                     bokeh.layouts.column(tok_emb_status, tok_emb_p))
             else:
-                main_widget = doc_emb_p
+                figure_widget = doc_emb_p
 
             return bokeh.layouts.column(
                 bokeh.layouts.column(embedding_select, query_tabs, background="#F0F0F0"),
-                main_widget,
+                figure_widget,
                 options_cb,
                 sizing_mode="stretch_width")
         else:
@@ -702,19 +731,26 @@ class EmbeddingPlotter:
                 self._figures_html.append(widgets.HTML(""))
             
             if len(self._figures_html) == 2:
-                main_widget = widgets.HBox([
+                figure_widget = widgets.HBox([
                     self._figures_html[0],
-                    widgets.VBox([tok_emb_status, tok_emb_update, self._figures_html[1]])])
+                    widgets.VBox([tok_emb_status, self._figures_html[1]])])
             else:
-                main_widget = self._figures_html[0]
+                figure_widget = self._figures_html[0]
 
             self._pw = jp_proxy_widget.JSProxyWidget()
             self._pw.element.empty()
             display(self._pw)
-                                        
-            return widgets.VBox([
+            
+            root_widgets = [
                 widgets.VBox([embedding_select, query_tabs]),
-                main_widget])
+                figure_widget
+            ]
+            
+            if tok_emb_p:
+                root_widgets.append(make_limited_function_warning_widget(
+                    "change the document selection on the left side"))
+                                        
+            return widgets.VBox(root_widgets)
                 
 
                 
@@ -1155,9 +1191,9 @@ class ResultScoresPlotter:
             candidates = [x for x in gold.phrases if x.startswith(query)]
             if len(candidates) > 0:
                 default_query = candidates[0]
+        self._default_query = default_query
 
-        self._query_select = bokeh.models.Select(
-            title='', options=gold.phrases, value=default_query)
+        self._query_select = None
         
     def _run_query(self):
         query = self._gold.items[self._gold.phrases.index(self._query_select.value)]
@@ -1216,12 +1252,21 @@ class ResultScoresPlotter:
         self._source.data = qr["data"]
         self._result_html.value = ""
         
-    def create_plot(self, index, bokeh_doc, rank=None):
+    def create_plot(self, index, bokeh_doc=None, rank=None):
         plot_width = 1200
         tooltips = """
             @tooltip
         """
 
+        if bokeh_doc:
+            self._query_select = bokeh.models.Select(
+                title='', options=self._gold.phrases, value=self._default_query)
+            
+            self._query_select.on_change('value', lambda attr, old, new: self.on_update())
+        else:
+            self._query_select = widgets.Dropdown(
+                title='', options=self._gold.phrases, value=self._default_query, disabled=True)            
+        
         qr = self._run_query()
 
         p = bokeh.plotting.figure(
@@ -1233,8 +1278,8 @@ class ResultScoresPlotter:
         p.xaxis.axis_label = 'rank'
         p.yaxis.axis_label = 'NDCG'
         
-        p.on_event(bokeh.events.Tap, self._on_tap)
-        self._query_select.on_change('value', lambda attr, old, new: self.on_update())
+        if bokeh_doc:
+            p.on_event(bokeh.events.Tap, self._on_tap)
         
         source = bokeh.models.ColumnDataSource(qr["data"])
         self._source = source
@@ -1248,18 +1293,31 @@ class ResultScoresPlotter:
         p.xaxis.major_label_orientation = np.pi / 2
         p.xgrid.visible = False
 
-        bokeh_doc.add_root(bokeh.layouts.column(self._query_select, p))
-        self._bokeh_doc = bokeh_doc
-        
         self._result_html = widgets.HTML("")
-        display(self._result_html)
 
         if rank:
             self._select_rank(rank)
-
+        
+        if bokeh_doc:
+            bokeh_doc.add_root(bokeh.layouts.column(self._query_select, p))
+            self._bokeh_doc = bokeh_doc
+        else:
+            display(self._query_select)
+            bokeh.io.show(p)
+        
+        result_widgets = [self._result_html]
+        if result_widgets:
+            result_widgets.append(make_limited_function_warning_widget(
+                "change the selected query and the selected rank"))
+        display(widgets.VBox(result_widgets))
+                        
+            
 def plot_results(gold, index, query=None, rank=None):
     plotter = ResultScoresPlotter(gold, index, query)
-    bokeh.io.show(functools.partial(plotter.create_plot, index, rank=rank))
+    if _has_bokeh_server:
+        bokeh.io.show(functools.partial(plotter.create_plot, index, rank=rank))
+    else:
+        plotter.create_plot(index=index, rank=rank)
 
     
 def plot_gold(gold):
