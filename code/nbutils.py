@@ -2,6 +2,7 @@ import string
 import collections
 import numpy as np
 import math
+import os
 import sklearn.metrics
 import itertools
 import functools
@@ -35,9 +36,19 @@ from vectorian.interact import PartitionMetricWidget
 
 _has_bokeh_server = False
 
-def initialize(has_bokeh_server=False):
+def running_inside_binder():
+    return os.environ.get("BINDER_SERVICE_HOST") is not None
+
+
+def initialize(has_bokeh_server="auto"):
+    global _has_bokeh_server
+    if has_bokeh_server == "auto":
+        has_bokeh_server = not running_inside_binder()
     _has_bokeh_server = has_bokeh_server
     
+    
+initialize()
+
     
 def make_limited_function_warning_widget(action_text):
     info_text = ("This visualization has limited interactivity due to technical constraints.<br>" +
@@ -482,11 +493,13 @@ class EmbeddingPlotter:
         def set_tok_emb_status(status):
             if _has_bokeh_server:
                 if status == "ok":
-                    tok_emb_p.visible = True
+                    if tok_emb_p:
+                        tok_emb_p.visible = True
                     if tok_emb_status:
                         tok_emb_status.visible = False
                 else:
-                    tok_emb_p.visible = False
+                    if tok_emb_p:
+                        tok_emb_p.visible = False
                     if tok_emb_status:
                         tok_emb_status.visible = True
                         tok_emb_status.text = f"""<p style="width:100%; font-weight: bold; text-align:center;">{status}</p>"""
@@ -1306,7 +1319,7 @@ class ResultScoresPlotter:
             bokeh.io.show(p)
         
         result_widgets = [self._result_html]
-        if result_widgets:
+        if bokeh_doc is None:
             result_widgets.append(make_limited_function_warning_widget(
                 "change the selected query and the selected rank"))
         display(widgets.VBox(result_widgets))
@@ -1315,7 +1328,7 @@ class ResultScoresPlotter:
 def plot_results(gold, index, query=None, rank=None):
     plotter = ResultScoresPlotter(gold, index, query)
     if _has_bokeh_server:
-        bokeh.io.show(functools.partial(plotter.create_plot, index, rank=rank))
+        bokeh.io.show(lambda doc: plotter.create_plot(index, doc, rank=rank))
     else:
         plotter.create_plot(index=index, rank=rank)
 
