@@ -1192,7 +1192,6 @@ class ResultScoresPlotter:
         self._doc_formatter = DocFormatter(gold)
         self._ndcg = NDCGComputer(gold)
         
-        self._bokeh_doc = None
         self._p = None
         self._source = None
 
@@ -1206,7 +1205,8 @@ class ResultScoresPlotter:
                 default_query = candidates[0]
         self._default_query = default_query
 
-        self._query_select = None
+        self._query_select = bokeh.models.Select(
+            title='', options=self._gold.phrases, value=self._default_query)
         
     def _run_query(self):
         query = self._gold.items[self._gold.phrases.index(self._query_select.value)]
@@ -1230,12 +1230,6 @@ class ResultScoresPlotter:
                 'tooltip': [self._doc_formatter.format_doc(m.prepared_doc) for m in result.matches]
             }
         }
-            
-    def create_plot(self, index):
-        if self._bokeh_doc is None:
-            bokeh.io.show(functools.partial(self._create_plot, index))
-        else:
-            self._create_plot(index, self._bokeh_doc)
             
     def _select_rank(self, rank):
         source = self._source
@@ -1265,25 +1259,20 @@ class ResultScoresPlotter:
         self._source.data = qr["data"]
         self._result_html.value = ""
         
-    def create_plot(self, index, bokeh_doc=None, rank=None):
-        plot_width = 1200
+    def build(self, rank=None, plot_width=1200, plot_height=250):
         tooltips = """
             @tooltip
         """
 
-        if bokeh_doc:
-            self._query_select = bokeh.models.Select(
-                title='', options=self._gold.phrases, value=self._default_query)
-            
+        if _has_bokeh_server:
             self._query_select.on_change('value', lambda attr, old, new: self.on_update())
         else:
-            self._query_select = widgets.Dropdown(
-                title='', options=self._gold.phrases, value=self._default_query, disabled=True)            
+            self._query_select.disabled = True
         
         qr = self._run_query()
 
         p = bokeh.plotting.figure(
-            x_range=qr['data']['rank'], plot_width=plot_width, plot_height=250,
+            x_range=qr['data']['rank'], plot_width=plot_width, plot_height=plot_height,
             title=qr['title'],
             toolbar_location=None, tools="", tooltips=tooltips)
         self._p = p
@@ -1291,7 +1280,7 @@ class ResultScoresPlotter:
         p.xaxis.axis_label = 'rank'
         p.yaxis.axis_label = 'NDCG'
         
-        if bokeh_doc:
+        if _has_bokeh_server:
             p.on_event(bokeh.events.Tap, self._on_tap)
         
         source = bokeh.models.ColumnDataSource(qr["data"])
@@ -1311,28 +1300,41 @@ class ResultScoresPlotter:
         if rank:
             self._select_rank(rank)
         
-        if bokeh_doc:
-            bokeh_doc.add_root(bokeh.layouts.column(self._query_select, p))
-            self._bokeh_doc = bokeh_doc
-        else:
-            display(self._query_select)
-            bokeh.io.show(p)
-        
-        result_widgets = [self._result_html]
-        if bokeh_doc is None:
-            result_widgets.append(make_limited_function_warning_widget(
-                "change the selected query and the selected rank"))
-        display(widgets.VBox(result_widgets))
+        bokeh_widget = bokeh.layouts.column(self._query_select, p)
+                
+        return bokeh_widget, self._result_html
                         
             
-def plot_results(gold, index, query=None, rank=None):
-    plotter = ResultScoresPlotter(gold, index, query)
-    if _has_bokeh_server:
-        bokeh.io.show(lambda doc: plotter.create_plot(index, doc, rank=rank))
-    else:
-        plotter.create_plot(index=index, rank=rank)
-
+def plot_results(gold, index, query=None, rank=None, plot_height=200):
+    bks = []
+    jps = []
+    plot_width = 1200
     
+    drills = [dict(query=query, rank=rank)]
+    
+    for drill in drills:
+        query = drill.get("query")
+        rank = drill.get("rank")
+        plotter = ResultScoresPlotter(gold, index, query)
+        bk, jp = plotter.build(rank, plot_width=plot_width // len(drills), plot_height=plot_height)
+        bks.append(bk)
+        jps.append(jp)
+        
+    bk_root = bokeh.layouts.row(*bks)
+    
+    if _has_bokeh_server:
+        bokeh.io.show(lambda doc: doc.add_root(bk_root))
+    else:
+        bokeh.io.show(bk_root)
+
+    result_widgets = [widgets.HBox(jps, layout=widgets.Layout(width=f'{plot_width}px'))] if len(jps) > 1 else jps[:1]
+    if not _has_bokeh_server:
+        result_widgets.append(make_limited_function_warning_widget(
+            "change the selected query and the selected rank"))
+        
+    display(widgets.VBox(result_widgets))
+
+        
 def plot_gold(gold):
     G = nx.Graph()
 
