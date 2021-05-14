@@ -1,3 +1,5 @@
+import spacy
+import spacy_sentence_bert
 import string
 import collections
 import numpy as np
@@ -58,10 +60,24 @@ def make_limited_function_warning_widget(action_text):
         value=f'<b><p style="text-align:center"><font color="red">{info_text}</p></b>',
         layout=widgets.Layout(border='solid 1px red'))
 
+
+def make_nlp():
+    # uses 'tagger' from en_core_web_sm
+    # we include 'parser' so that Vectorian can detect sentence boundaries
+
+    nlp = spacy.load('en_core_web_sm', exclude=['ner'])
+    nlp.add_pipe('sentence_bert', config={'model_name': 'en_paraphrase_distilroberta_base_v1'})
+    nlp.meta["name"] = "core_web_sm_AND_en_paraphrase_distilroberta_base_v1"
+    return nlp
+
     
 class Gold:
     def __init__(self, data):
         self._data = data
+        
+    @cached_property
+    def num_contexts(self):
+        return sum(len(q["matches"]) for q in self._data)
         
     @property
     def phrases(self):
@@ -1096,7 +1112,7 @@ class NDCGPlotter:
     def _format_ndcg(self, ndcg):
         return ['%.1f%%' % (x * 100) for x in ndcg]
             
-    def update(self, index):
+    def update_ungrouped(self, index):
         ndcg = self._ndcg_array(index)
         
         if self._bokeh_handle is None:
@@ -1124,24 +1140,75 @@ class NDCGPlotter:
             self._source.data['ndcg'] = ndcg
             self._source.data['ndcg_str'] = self._format_ndcg(ndcg)
             bokeh.io.push_notebook(handle=self._bokeh_handle)
+
+    def update_grouped(self, named_indices):
+        named_indices = list(named_indices.items())
+        index_names = [x[0] for x in named_indices]
+        indices = [x[1] for x in named_indices]
+        
+        y = [(x, index_name) for x in self._phrase for index_name in index_names[::-1]]
+        
+        self._p = bokeh.plotting.figure(
+            y_range=bokeh.models.FactorRange(*y),
+            plot_width=1000, plot_height=20 * len(self._gold.phrases) * len(indices),
+            title="",
+            toolbar_location=None, tools="")
+        self._p.x_range = bokeh.models.Range1d(0, 1)
+        self._p.ygrid.visible = False
+        self._p.xaxis.axis_label = 'NDCG'
+        
+        self._p.yaxis.group_label_orientation = 0
+       
+        ndcg = np.array([self._ndcg_array(index) for index in indices])[::-1]
+        flat_ndcg = np.transpose(ndcg).flatten()
+        
+        color = np.repeat(
+            np.linspace(0, 1, len(indices))[np.newaxis],
+            len(self._phrase), axis=0).flatten()
+
+        self._source = bokeh.models.ColumnDataSource({
+            'phrase': y,
+            'ndcg': flat_ndcg,
+            'ndcg_str': self._format_ndcg(flat_ndcg),
+            'color': color,
+            'y': np.array(list(range(len(self._phrase) * len(indices)))) * 2
+        })
+
+        mapper = bokeh.transform.linear_cmap(
+            field_name='color', palette=bokeh.palettes.Category20[max(3, len(indices))], low=0, high=1)
+
+        self._p.hbar(
+            'phrase', right='ndcg', y='y', color=mapper,
+            source=self._source, height=1)
+
+        labels = bokeh.models.LabelSet(x='ndcg', y='phrase', text='ndcg_str', level='glyph',
+            x_offset=0, y_offset=0, source=self._source, render_mode='canvas',
+            text_font_size='8pt', text_align='right', text_baseline='middle', text_color='white')
+        self._p.add_layout(labels)
+
+        bokeh.io.show(self._p)
             
-            
-def plot_ndcgs(gold, index):
+
+def plot_ndcgs(gold, named_indices):
     plotter = NDCGPlotter(gold)
-    plotter.update(index)
+    plotter.update_grouped(named_indices)
     
     
 class InteractiveQuery:
-    def __init__(self, session, nlp, partition_encoders={}):
+    def __init__(self, session, nlp, partition_encoders={}, strategy="Alignment", strategy_options={}):
         self._session = session
         self._nlp = nlp
         self._partition_encoders = partition_encoders
-        self._ui = PartitionMetricWidget(self)
+        self._ui = PartitionMetricWidget(self, default=strategy, default_options=strategy_options)
         self._summary_widget = widgets.HTML("")
     
     @property
     def session(self):
         return self._session
+    
+    @property
+    def partition(self):
+        return self._session.partition("document")
     
     @property
     def partition_encoders(self):
@@ -1162,6 +1229,7 @@ class InteractiveQuery:
         html = markdown.markdown(self.describe())
         html = html.replace("<strong>", "<b>")
         html = html.replace("</strong>", "</b>")
+        html = f'<span style="line-height:normal;">{html}</span>'
         self._summary_widget.value = html
     
     def create_index(self):
@@ -1169,8 +1237,12 @@ class InteractiveQuery:
 
         
 class InteractiveIndexBuilder:
-    def __init__(self, session, nlp, partition_encoders={}):
-        query_ui = InteractiveQuery(session, nlp, partition_encoders=partition_encoders)        
+    def __init__(self, session, nlp, partition_encoders={}, strategy="Alignment", strategy_options={}):
+        query_ui = InteractiveQuery(
+            session, nlp,
+            partition_encoders=partition_encoders,
+            strategy=strategy,
+            strategy_options=strategy_options)
         query_ui.on_changed()
         self._query_ui = query_ui
         
@@ -1188,6 +1260,7 @@ class ResultScoresPlotter:
     def __init__(self, gold, index, query=None):
         self._gold = gold
         self._index = index
+        self._selected_rank = None
 
         self._doc_formatter = DocFormatter(gold)
         self._ndcg = NDCGComputer(gold)
@@ -1208,9 +1281,20 @@ class ResultScoresPlotter:
         self._query_select = bokeh.models.Select(
             title='', options=self._gold.phrases, value=self._default_query)
         
+    @property
+    def matches(self):
+        return self._result.matches
+        
+    @property
+    def selected_match(self):
+        if self._selected_rank is None:
+            return None
+        else:
+            return self._result.matches[self._selected_rank - 1]
+
     def _run_query(self):
         query = self._gold.items[self._gold.phrases.index(self._query_select.value)]
-        n = 100
+        n = self._gold.num_contexts
         gold_matches = [x["id"] for x in query["matches"]]
         result = self._index.find(query["phrase"], n=n, disable_progress=True)
         self._result = result
@@ -1248,6 +1332,7 @@ class ResultScoresPlotter:
         
         html = renderer.to_html([self._result.matches[rank - 1]])
         self._result_html.value = html
+        self._selected_rank = rank
             
     def _on_tap(self, event):
         i = math.floor(event.x)
@@ -1311,11 +1396,12 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
     plot_width = 1200
     
     drills = [dict(query=query, rank=rank)]
+    plotters = []
     
     for drill in drills:
-        query = drill.get("query")
         rank = drill.get("rank")
         plotter = ResultScoresPlotter(gold, index, query)
+        plotters.append(plotter)
         bk, jp = plotter.build(rank, plot_width=plot_width // len(drills), plot_height=plot_height)
         bks.append(bk)
         jps.append(jp)
@@ -1333,6 +1419,8 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
             "change the selected query and the selected rank"))
         
     display(widgets.VBox(result_widgets))
+    
+    return plotters[0]
 
         
 def plot_gold(gold):
