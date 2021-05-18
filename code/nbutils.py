@@ -23,11 +23,13 @@ import bokeh.models
 import bokeh.transform
 import bokeh.palettes
 import bokeh.layouts
+import bokeh.io
 
 from functools import partial
 from cached_property import cached_property
 from IPython.core.display import HTML, display
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 from vectorian.embeddings import TokenEmbeddingAggregator, prepare_docs
 from vectorian.embeddings import CachedPartitionEncoder
@@ -1146,6 +1148,8 @@ class NDCGPlotter:
         index_names = [x[0] for x in named_indices]
         indices = [x[1] for x in named_indices]
         
+        palette = bokeh.palettes.Set2
+        
         y = [(x, index_name) for x in self._phrase for index_name in index_names[::-1]]
         
         self._p = bokeh.plotting.figure(
@@ -1159,7 +1163,7 @@ class NDCGPlotter:
         
         self._p.yaxis.group_label_orientation = 0
        
-        ndcg = np.array([self._ndcg_array(index) for index in indices])[::-1]
+        ndcg = np.array([self._ndcg_array(index) for index in tqdm(indices)])[::-1]
         flat_ndcg = np.transpose(ndcg).flatten()
         
         color = np.repeat(
@@ -1175,7 +1179,7 @@ class NDCGPlotter:
         })
 
         mapper = bokeh.transform.linear_cmap(
-            field_name='color', palette=bokeh.palettes.Category20[max(3, len(indices))], low=0, high=1)
+            field_name='color', palette=palette[max(3, len(indices))], low=0, high=1)
 
         self._p.hbar(
             'phrase', right='ndcg', y='y', color=mapper,
@@ -1494,3 +1498,272 @@ def plot_gold(gold):
     
     bokeh.io.show(plot)
     
+    
+
+def get_token_scores_s(match):
+    for region in match.regions():
+        #print(region.gap_penalty, region)
+        if region.match and region.match.edges:
+            # use top weighted edge, if more than one.
+            d = min([e.distance for e in region.match.edges])
+            yield region.s, 1 - d
+    
+
+def get_token_scores_t(match):
+    for region in match.regions():
+        #print(region.gap_penalty, region)
+        if region.match and region.match.edges:
+            # use top weighted edge, if more than one.
+            i = np.argmin([e.distance for e in region.match.edges])
+            edge = region.match.edges[i] 
+            d = edge.distance
+            t = edge.t
+            yield (t.text, t.index), 1 - d
+
+
+def score_summary(match, get_scores=get_token_scores_s):
+    # Vectorian computes its alignment scores by summing the query token's scores (each
+    # between 0 and 1), then subtracting gap penalties, and then normalizing so that the
+    # resulting score is between 0 and 1 (in the case of untagged alignments, this last
+    # step simply means dividing by n, if n is the nnumber of matched query tokens).
+
+    abs_scores = list(get_scores(match))
+
+    gap_penalties = []
+    for region in match.regions():
+        if region.gap_penalty > 0:
+            gap_penalties.append(region.gap_penalty)
+
+    max_score = match.score_max
+
+    # we produce token scores from which we subtracted the
+    # global gap penalty. this allows us to return the gap
+    # penalty as a positive term, instead of a negative
+    # term - which helps with plotting this data.
+    
+    base_score = sum(x[1] for x in abs_scores)
+    c = (base_score - sum(gap_penalties)) / base_score
+    tokens = [(k, v * c) for k, v in abs_scores]
+    
+    data = {
+        'tokens': tokens,
+        'gaps': gap_penalties,
+        'rest': max_score - (sum(x[1] for x in tokens) + sum(gap_penalties))
+    }
+    
+    return {
+        'tokens': [(k, v / max_score) for k, v in data['tokens']],
+        'gaps': [x / max_score for x in gap_penalties],
+        'rest': data['rest'] / max_score
+    }
+
+
+class TokenColors:
+    def __init__(self):
+        import bokeh.palettes
+
+        self._colors = bokeh.palettes.Category20[20]
+
+        token_color_indices = [i for i in range(20) if i not in (6, 15)]
+        self._token_colors = [self._colors[i] for i in token_color_indices]
+    
+    def tokens(self, n):
+        return list(itertools.islice(itertools.cycle(self._token_colors), None, n))
+    
+    @property
+    def gap(self):
+        return self._colors[6]
+
+    @property
+    def err(self):
+        return self._colors[15]
+
+
+def token_scores_stacked_bar_chart(matches, ranks=None, highlight=None, show_gap_penalty=True, plot_width=800):
+    if ranks is None:
+        ranks = list(range(1, len(matches) + 1))
+
+    data = collections.defaultdict(list)
+    tokens = set()
+
+    summaries = []
+    for j in ranks:
+        match = matches[j - 1]
+        summary = score_summary(match, get_token_scores_t)
+        summaries.append(summary)
+        for k, v in summary['tokens']:
+            tokens.add(k)
+            
+        #x_sum = sum([x[1] for x in summary['tokens']])
+        #print(j + 1, x_sum, match.score, math.isclose(x_sum, match.score, abs_tol=0.001), len(summary['tokens']))
+        
+    tokens = sorted(tokens, key=lambda x: x[1])
+    
+    def token_key(text, index):
+        if index is not None:
+            return f"{text} [{index}]"
+        else:
+            return text
+    
+    for j, summary in enumerate(summaries):
+        match_tokens = dict(summary['tokens'])
+        for t in tokens:
+            x = match_tokens.get(t, 0)
+            data[token_key(*t)].append(x)
+        data["gap"].append(sum(summary['gaps']))
+        data["x"].append(j + 1)
+      
+    p = bokeh.plotting.figure(
+        plot_width=plot_width, plot_height=250,
+        title="", toolbar_location=None)
+    
+    if show_gap_penalty:
+        elements = [("gap", None)] + tokens
+    else:
+        elements = tokens
+
+    line_color = ([None] * len(tokens)) + ([None] if show_gap_penalty else [])
+    line_dash = ["solid"] * len(tokens) + (["solid"] if show_gap_penalty else [])
+    if highlight and highlight.get("token"):
+        token_text = [t[0] for t in elements[::-1]]
+        for j, x in enumerate(highlight["token"]):
+            i = token_text.index(x)
+            line_color[i] = "black"
+            line_dash[i] = ["solid", "dashed", "dotted"][j % 3]
+        
+    colors = TokenColors()
+    vstack = p.vbar_stack(
+        [token_key(*x) for x in elements[::-1]], x="x", width=0.9,
+        color=colors.tokens(len(tokens)) + ([colors.gap] if show_gap_penalty else []),
+        line_color=line_color, line_width=2, line_dash=line_dash,
+        source=bokeh.models.ColumnDataSource(data))
+    
+    items = []
+    for x, vs in zip(elements, vstack[::-1]):
+        items.append((token_key(*x), [vs]))
+    
+    legend = bokeh.models.Legend(items=items, location=(0, -30))
+    p.add_layout(legend, 'right')
+
+    p.xgrid.visible = False
+    p.xaxis.major_label_orientation = np.pi / 2
+    p.xaxis.ticker = ranks
+    
+    if highlight and highlight.get("rank"):
+        scores = [m.score for m in matches]
+        x = []
+        y = []
+        for i in highlight["rank"]:
+            x.append(i)
+            y.append(scores[i - 1] + 0.05)    
+        p.triangle(color="black", x=x, y=y, size=10, angle=np.pi)
+    
+    bokeh.io.show(p)
+    
+    
+def token_scores_pie_chart(match, plot_size=350):
+    import bokeh.plotting
+    import bokeh.models
+    import bokeh.io
+    import bokeh.palettes
+    import numpy as np
+        
+    summary = score_summary(match, get_token_scores_t)
+    colors = TokenColors()
+
+    data = {
+        'element': [x[0][0] for x in summary['tokens']],
+        'score': [x[1] for x in summary['tokens']],
+        'color': colors.tokens(len(summary['tokens']))
+    }
+    
+    data['element'].append('')
+    data['score'].append(summary['rest'])
+    data['color'].append(colors.err)
+    
+    for gap_penalty in summary['gaps']:
+        data['element'].append('gap')
+        data['score'].append(gap_penalty)
+        data['color'].append(colors.gap)
+    
+    data['angle'] = np.array(data['score']) * (2 * np.pi * 0.8)
+        
+    data['end_angle'] = np.cumsum(data['angle'])
+    data['start_angle'] = np.hstack([[0], data['end_angle']])[:-1]
+
+    k = len(summary['gaps']) + 1
+    data['start_angle'][-k:] += 2 * np.pi * 0.1
+    data['end_angle'][-k:] += 2 * np.pi * 0.1
+
+    source = bokeh.models.ColumnDataSource(data)
+    
+    p = bokeh.plotting.figure(
+        plot_width=plot_size, plot_height=plot_size,
+        title="", toolbar_location=None,
+        tools="hover", tooltips="@element: @score")
+    
+    r1 = 0.25
+    r2 = 0.5
+    
+    p.annular_wedge(
+        x=0, y=0, inner_radius=r1, outer_radius=r2, direction="anticlock",
+        start_angle='start_angle',
+        end_angle='end_angle',
+        line_color="white", fill_color='color', source=source)  # legend_field='element'
+    
+    label_angles = (data['start_angle'] + data['end_angle']) / 2
+    #label_angles = [x * (np.pi / 180) for x in range(0, 360, 20)]
+    
+    def make_label_source(r):
+        return bokeh.models.ColumnDataSource({
+            'text': data['element'],
+            'x': np.cos(label_angles) * r,
+            'y': np.sin(label_angles) * r,
+            'angle': label_angles
+        })
+    
+    labels = bokeh.models.LabelSet(x='x', y='y', text='text',
+        x_offset=0, y_offset=0, source=make_label_source((r1 + r2) / 2),
+        text_font_size='10pt', angle='angle', render_mode='canvas',
+        text_baseline='middle', text_align='center')
+    p.add_layout(labels)
+
+    #p.circle(x='x', y='y', source=make_label_source(0.3), color="black")
+    
+    p.axis.axis_label = None
+    p.axis.visible = False
+    p.grid.grid_line_color = None
+
+    plot_range = 0.55
+    
+    p.y_range.start = -plot_range
+    p.y_range.end = plot_range
+
+    p.x_range.start = -plot_range
+    p.x_range.end = plot_range
+    
+    return p
+
+    
+def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width=1000):
+    if kind == "bar":
+        @widgets.interact(indicate_gap_penalty=False)
+        def plot(indicate_gap_penalty):
+            token_scores_stacked_bar_chart(
+                matches,
+                ranks=ranks,
+                highlight=highlight,
+                show_gap_penalty=indicate_gap_penalty,
+                plot_width=plot_width)
+        return plot
+    elif kind == "pie":
+        assert ranks is not None
+        picked = [matches[i - 1] for i in ranks]
+        n_cols = 3
+        n_rows = int(np.ceil(len(picked) / n_cols))
+        plot_size = plot_width // n_cols
+        figures = [token_scores_pie_chart(m, plot_size=plot_size) for m in picked]
+        bokeh.io.show(bokeh.layouts.gridplot(
+            figures, ncols=n_cols, plot_width=plot_size, plot_height=plot_size * n_rows))
+    else:
+        raise ValueError(kind)
