@@ -5,6 +5,7 @@ import collections
 import numpy as np
 import math
 import os
+import enum
 import sklearn.metrics
 import itertools
 import functools
@@ -38,20 +39,37 @@ from vectorian.metrics import TokenSimilarity, CosineSimilarity
 from vectorian.interact import PartitionMetricWidget
 
 
-_has_bokeh_server = False
+class DisplayMode(enum.Enum):
+    SERVER = (True, False)
+    BINDER = (False, False)
+    EXPORT = (True, True)
+    
+    def __init__(self, bokeh, static):
+        self.bokeh = bokeh  # prefer bokeh widgets
+        self.static = static  # static or interactive?
+        
+    @property
+    def fully_interactive(self):
+        return self.bokeh and not self.static
+    
+
+_display_mode = DisplayMode.EXPORT
 
 def running_inside_binder():
     return os.environ.get("BINDER_SERVICE_HOST") is not None
 
 
-def initialize(has_bokeh_server="auto"):
-    global _has_bokeh_server
-    if has_bokeh_server == "auto":
-        has_bokeh_server = not running_inside_binder()
-    _has_bokeh_server = has_bokeh_server
+def initialize(display_mode="auto"):
+    global _display_mode
+    if display_mode == "auto":
+        _display_mode = DisplayMode.BINDER if running_inside_binder() else DisplayMode.SERVER
+    else:
+        _display_mode = DisplayMode[display_mode.upper()]
+    display(HTML(f"""
+        <div>Running notebook in <span style="background-color: #E0F8E0">{_display_mode.name}</span> mode.</div>"""))
     
     
-initialize()
+#initialize()
 
     
 def make_limited_function_warning_widget(action_text):
@@ -178,7 +196,7 @@ def find_index_by_filter(terms, s):
 def browse(gold, initial_phrase=1, initial_context=1, rows=5):
     formatter = ContextFormatter()
     records = gold.items
-    
+
     if isinstance(initial_phrase, str):
         initial_phrase = find_index_by_filter(
             gold.phrases, initial_phrase) + 1
@@ -188,7 +206,7 @@ def browse(gold, initial_phrase=1, initial_context=1, rows=5):
         value=initial_phrase - 1,
         rows=rows,
         description='phrase:')
-    
+
     def query_contexts():
         matches = records[query_select.value]["matches"]
         return [(x["work"], i) for i, x in enumerate(matches)]
@@ -202,27 +220,38 @@ def browse(gold, initial_phrase=1, initial_context=1, rows=5):
         value=initial_context - 1,
         rows=rows,
         description='occurs in:')
-    
-    context_display = widgets.HTML("", description="as:")
-    
-    def on_phrase_change(change):
-        context_select.unobserve(on_context_change)
-        context_select.options = query_contexts()
-        context_select.value = 0
+
+    if _display_mode.static:
+        matches = records[query_select.value]["matches"]
+        
+        html = f"""
+        The phrase <em>{gold.phrases[query_select.value]}</em> occurs in
+        <em>{query_contexts()[context_select.value][0]}</em> as:<br>
+        <div style="background-color:#F0F0E0">{formatter.format_context(matches[context_select.value])}</div>
+        """
+        
+        return IPython.core.display.HTML(html)
+    else:
+        context_display = widgets.HTML("", description="as:")
+
+        def on_phrase_change(change):
+            context_select.unobserve(on_context_change)
+            context_select.options = query_contexts()
+            context_select.value = 0
+            context_select.observe(on_context_change)
+            on_context_change(None)
+
+        def on_context_change(change):
+            matches = records[query_select.value]["matches"]
+            works = query_contexts()
+            i = context_select.value
+            context_display.value = formatter.format_context(matches[i])
+
+        query_select.observe(on_phrase_change)
         context_select.observe(on_context_change)
         on_context_change(None)
 
-    def on_context_change(change):
-        matches = records[query_select.value]["matches"]
-        works = query_contexts()
-        i = context_select.value
-        context_display.value = formatter.format_context(matches[i])
-        
-    query_select.observe(on_phrase_change)
-    context_select.observe(on_context_change)
-    on_context_change(None)
-    
-    return widgets.HBox([query_select, context_select, context_display])    
+        return widgets.HBox([query_select, context_select, context_display])    
     
     
 class TSNECallback(openTSNE.callbacks.Callback):
@@ -400,13 +429,13 @@ class EmbeddingPlotter:
             script_code.append(x.string)
         self._pw.js_init("\n".join(script_code))
                 
-    def mk_plot(self, bokeh_doc, encoder=0, selection=[], locator=None, has_tok_emb=True):
+    def mk_plot(self, bokeh_doc, encoder=0, selection=[], locator=None, has_tok_emb=True, plot_width=1200):
         encoder_names = sorted(self.encoders.keys())
         
         if isinstance(encoder, str):
             encoder = find_index_by_filter(encoder_names, encoder)
         
-        if _has_bokeh_server:
+        if _display_mode.bokeh:
             embedding_select = bokeh.models.Select(
                 title="",
                 value=encoder_names[encoder],
@@ -454,12 +483,13 @@ class EmbeddingPlotter:
 
         if has_tok_emb:
             tok_emb_p = bokeh.plotting.figure(
-                plot_width=400, plot_height=600,
+                plot_width=int(plot_width * 0.4), plot_height=600,
                 title=f"Token Embeddings",
                 toolbar_location="right",
                 tools="pan,wheel_zoom,box_zoom,reset",
                 tooltips=self._tok_emb_tooltips,
                 visible=True)
+            plot_width = int(plot_width * 0.6)
 
             tok_emb_p.circle(
                 source=source['tokens'],
@@ -468,7 +498,7 @@ class EmbeddingPlotter:
                 color=cmap,
                 alpha=0.8)
 
-            if _has_bokeh_server:
+            if _display_mode.bokeh:
                 tok_emb_status = bokeh.models.Div(text="")
             else:
                 tok_emb_status = widgets.Label(text="")
@@ -477,17 +507,19 @@ class EmbeddingPlotter:
             token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
                 x_offset=5, y_offset=5, source=source['tokens'],
                 render_mode='canvas', text_font_size='6pt')
-            tok_emb_p.add_layout(token_labels)
+            tok_emb_p.add_layout(token_labels)            
         else:
             tok_emb_p = None
-            tok_emb_status = None        
+            tok_emb_status = None
+            
+        is_interactive = has_tok_emb and _display_mode.fully_interactive
         
         doc_emb_p = bokeh.plotting.figure(
-            plot_width=600, plot_height=600,
+            plot_width=plot_width, plot_height=600,
             title=f"Document Embeddings",
             toolbar_location="left" if has_tok_emb else "below",
-            tools="pan, wheel_zoom, lasso_select, box_select" if (has_tok_emb and _has_bokeh_server) else "pan, wheel_zoom",
-            active_drag="lasso_select" if (has_tok_emb and _has_bokeh_server) else "pan",
+            tools="pan, wheel_zoom, lasso_select, box_select" if is_interactive else "pan, wheel_zoom",
+            active_drag="lasso_select" if is_interactive else "pan",
             tooltips=self._doc_emb_tooltips)
                 
         doc_emb_p.circle(
@@ -509,7 +541,7 @@ class EmbeddingPlotter:
         
         
         def set_tok_emb_status(status):
-            if _has_bokeh_server:
+            if _display_mode.bokeh:
                 if status == "ok":
                     if tok_emb_p:
                         tok_emb_p.visible = True
@@ -612,7 +644,7 @@ class EmbeddingPlotter:
             
             set_tok_emb_status("ok")
             
-            if not _has_bokeh_server:
+            if not _display_mode.fully_interactive:
                 self._update_figures_html()
             
         def toggle_legend(attr, old, new):
@@ -622,7 +654,7 @@ class EmbeddingPlotter:
                 legend.visible = False
                 
         def update_document_embedding_plot():
-            if _has_bokeh_server:
+            if _display_mode.bokeh:
                 active = query_tabs.active
             else:
                 active = query_tabs.selected_index                
@@ -636,7 +668,7 @@ class EmbeddingPlotter:
                 source[k].data = v
             update_token_plot()
 
-            if not _has_bokeh_server:
+            if not _display_mode.fully_interactive:
                 self._update_figures_html()
             
         def clear_token_plot():
@@ -651,18 +683,27 @@ class EmbeddingPlotter:
             if self._tok_plot_state == tok_plot_state:
                 update_token_plot()
                             
-        if _has_bokeh_server:
+        if _display_mode.bokeh:
             options_cb.visible = False  # broken in bokeh
             
             def update_document_embedding_plot_shim(attr, old, new):
                 update_document_embedding_plot()
 
-            embedding_select.on_change("value", update_document_embedding_plot_shim)
-            intruder_select.on_change("value", update_document_embedding_plot_shim)
-            intruder_free.on_change("value", update_document_embedding_plot_shim)
-            query_tabs.on_change("active", update_document_embedding_plot_shim)
+            if _display_mode.static:
+                embedding_select.disabled = True
+                intruder_select.disabled = True
+                intruder_free.disabled = True
+                query_tabs.disabled = True
+                #for x in query_tabs.tabs:
+                #    x.disabled = True
+                options_cb.disabled = True
+            else:
+                embedding_select.on_change("value", update_document_embedding_plot_shim)
+                intruder_select.on_change("value", update_document_embedding_plot_shim)
+                intruder_free.on_change("value", update_document_embedding_plot_shim)
+                query_tabs.on_change("active", update_document_embedding_plot_shim)
 
-            options_cb.on_change("active", toggle_legend)
+                options_cb.on_change("active", toggle_legend)
         else:
             def update_document_embedding_plot_shim(changed):
                 update_document_embedding_plot()
@@ -672,7 +713,7 @@ class EmbeddingPlotter:
             intruder_free.observe(update_document_embedding_plot_shim, names="value")
             query_tabs.observe(update_document_embedding_plot_shim, names="selected_index")
 
-        if _has_bokeh_server:
+        if _display_mode.bokeh:
             def selection_change(attr, old, new):
                 clear_token_plot()
                 set_tok_emb_status("Computing. Please Wait...")
@@ -680,7 +721,8 @@ class EmbeddingPlotter:
                 bokeh_doc.add_timeout_callback(functools.partial(
                     trigger_token_plot_update, self._tok_plot_state), 500)
 
-            source['docs'].selected.on_change('indices', selection_change)
+            if not _display_mode.static:
+                source['docs'].selected.on_change('indices', selection_change)
         else:
             '''
             source['docs'].selected.js_on_change('indices', bokeh.models.CustomJS(code="""
@@ -720,9 +762,12 @@ class EmbeddingPlotter:
             id_to_index = dict((doc_data.doc.unique_id, i) for i, doc_data in enumerate(self._docs))
             source['docs'].selected.indices = [id_to_index[x] for x in selection]
             
-            if not _has_bokeh_server:
+            if not _display_mode.fully_interactive:
                 update_token_plot()
 
+            elif _display_mode.static:
+                update_token_plot()
+                
         if locator is not None:
             if isinstance(locator, str):
                 locator = ("free", locator)
@@ -736,8 +781,11 @@ class EmbeddingPlotter:
                 query_tabs.active = 2
             else:
                 raise ValueError(locator_type)
+                
+        if _display_mode.static:
+            update_document_embedding_plot()
         
-        if _has_bokeh_server:
+        if _display_mode.bokeh:
             if tok_emb_p is not None:
                 figure_widget = bokeh.layouts.row(
                     doc_emb_p,
@@ -794,15 +842,20 @@ def plot_doc_embeddings(session, nlp, gold, plot_args, aggregator=np.mean, extra
             plotter.encoders[k] = v
         plotters.append(plotter)
 
-    if _has_bokeh_server:
-        def add_root(bokeh_doc):
+    if _display_mode.bokeh:
+        def mk_root(bokeh_doc):
             widgets = []
             for plotter, kwargs in zip(plotters, plot_args):
                 widgets.append(plotter.mk_plot(bokeh_doc, **kwargs))
+            return bokeh.layouts.row(widgets)
 
-            bokeh_doc.add_root(bokeh.layouts.row(widgets))
+        if _display_mode.static:
+            bokeh.io.show(mk_root(None))
+        else:
+            def add_root(bokeh_doc):
+                bokeh_doc.add_root(mk_root(bokeh_doc))
 
-        bokeh.io.show(add_root)
+            bokeh.io.show(add_root)
     else:
         plots = [
             plotter.mk_plot(None, **kwargs)
@@ -903,7 +956,7 @@ class TokenSimilarityPlotter:
         p = self._figures[0]['figure']
         p.yaxis.axis_label = state['label']
         
-        if not _has_bokeh_server:
+        if not _display_mode.fully_interactive:
             self._update_figures_html()
             
     def __init__(self, session, nlp, gold, token, initial_doc=0, n_figures=2, top_n=15):
@@ -926,14 +979,18 @@ class TokenSimilarityPlotter:
         self._height_per_token = 20
         self._top_n = top_n
         
-        if _has_bokeh_server:        
+        if _display_mode.bokeh:
             self._token_text = bokeh.models.TextInput(value=token)
             self._doc_select = bokeh.models.Select(
                 options=[(v, k) for k, v in doc_digests], value=initial_select_value)
             #self._top_n = bokeh.models.Slider(start=5, end=100, step=5, value=15, title="top n")
 
-            self._token_text.on_change("value", lambda attr, old, new: self._update())
-            self._doc_select.on_change("value", lambda attr, old, new: self._update())
+            if _display_mode.static:
+                self._token_text.disabled = True
+                self._doc_select.disabled = True
+            else:
+                self._token_text.on_change("value", lambda attr, old, new: self._update())
+                self._doc_select.on_change("value", lambda attr, old, new: self._update())
             #self._top_n.on_change("value", lambda attr, old, new: self._update())
         else:
             self._token_text = widgets.Text(value=token)
@@ -947,10 +1004,13 @@ class TokenSimilarityPlotter:
             palette="Viridis256", low=0, high=1)
         
     def _create_figure_record(self, index):
-        if _has_bokeh_server:        
+        if _display_mode.bokeh:
             embedding_select = bokeh.models.Select(
                 options=self._embedding_names, value=self._embedding_names[index])
-            embedding_select.on_change("value", lambda attr, old, new: self._update(index=index))
+            if _display_mode.static:
+                embedding_select.disabled = True
+            else:
+                embedding_select.on_change("value", lambda attr, old, new: self._update(index=index))
         else:
             embedding_select = widgets.Dropdown(
                 options=self._embedding_names, value=self._embedding_names[index])
@@ -1012,13 +1072,18 @@ class TokenSimilarityPlotter:
 
         self._configure_figures(state)
             
-        if bokeh_doc:
-            bokeh_doc.add_root(bokeh.layouts.column(
+        if bokeh_doc or _display_mode.static:
+            root = bokeh.layouts.column(
                 self._token_text,
                 self._doc_select,
                 bokeh.layouts.row(*[
-                    bokeh.layouts.column(x['embedding_select'], x['figure']) for x in self._figures])
-            ))
+                    bokeh.layouts.column(x['embedding_select'], x['figure']) for x in self._figures]))
+                        
+            if _display_mode.static:
+                bokeh.io.show(root)
+            else:
+                bokeh_doc.add_root(root)
+            
         else:
             self._figures_html = [widgets.HTML("") for _ in self._figures]
             
@@ -1034,7 +1099,7 @@ class TokenSimilarityPlotter:
             
 def plot_token_similarity(session, nlp, gold, token="high", doc=0, n_figures=2, top_n=15):
     plotter = TokenSimilarityPlotter(session, nlp, gold, token, doc, n_figures=n_figures, top_n=top_n)
-    if _has_bokeh_server:
+    if _display_mode.fully_interactive:
         bokeh.io.show(plotter.create)
     else:
         plotter.create(None)
@@ -1250,11 +1315,18 @@ class InteractiveIndexBuilder:
         query_ui.on_changed()
         self._query_ui = query_ui
         
-        tab = widgets.Tab(
-            children=[query_ui.summary_widget, query_ui.widget])
-        for i, title in enumerate(['Index Summary', 'Edit']):
-            tab.set_title(i, title)
-        display(tab)
+        if _display_mode.static:
+            display(IPython.core.display.HTML(f"""
+            <div style="background-color:#E0F0E0; margin-left: 2em; padding: 0.4em;">
+                {query_ui.summary_widget.value}
+            </div>
+            """))
+        else:
+            tab = widgets.Tab(
+                children=[query_ui.summary_widget, query_ui.widget])
+            for i, title in enumerate(['Index Summary', 'Edit']):
+                tab.set_title(i, title)
+            display(tab)
                     
     def build_index(self):
         return self._query_ui.create_index()
@@ -1353,7 +1425,7 @@ class ResultScoresPlotter:
             @tooltip
         """
 
-        if _has_bokeh_server:
+        if not _display_mode.static:
             self._query_select.on_change('value', lambda attr, old, new: self.on_update())
         else:
             self._query_select.disabled = True
@@ -1369,7 +1441,7 @@ class ResultScoresPlotter:
         p.xaxis.axis_label = 'rank'
         p.yaxis.axis_label = 'NDCG'
         
-        if _has_bokeh_server:
+        if not _display_mode.static:
             p.on_event(bokeh.events.Tap, self._on_tap)
         
         source = bokeh.models.ColumnDataSource(qr["data"])
@@ -1412,17 +1484,21 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
         
     bk_root = bokeh.layouts.row(*bks)
     
-    if _has_bokeh_server:
+    if _display_mode.fully_interactive:
         bokeh.io.show(lambda doc: doc.add_root(bk_root))
     else:
         bokeh.io.show(bk_root)
 
     result_widgets = [widgets.HBox(jps, layout=widgets.Layout(width=f'{plot_width}px'))] if len(jps) > 1 else jps[:1]
-    if not _has_bokeh_server:
+    if not _display_mode.fully_interactive:
         result_widgets.append(make_limited_function_warning_widget(
             "change the selected query and the selected rank"))
         
-    display(widgets.VBox(result_widgets))
+    if _display_mode.static:
+        for jp in jps:
+            display(IPython.core.display.HTML(jp.value))
+    else:
+        display(widgets.VBox(result_widgets))
     
     return plotters[0]
 
@@ -1475,7 +1551,8 @@ def plot_gold(gold):
             
     plot = bokeh.models.Plot(
         plot_width=1000, plot_height=400,
-        x_range=bokeh.models.Range1d(-1.1, 1.1), y_range=bokeh.models.Range1d(-0.8, 0.8))
+        x_range=bokeh.models.Range1d(-1.1, 1.1), y_range=bokeh.models.Range1d(-0.8, 0.8),
+        output_backend="svg")
     
     node_hover_tool = bokeh.models.HoverTool(
         tooltips="""
@@ -1496,8 +1573,7 @@ def plot_gold(gold):
     tok_emb_p.add_layout(token_labels)
     '''
     
-    bokeh.io.show(plot)
-    
+    return plot
     
 
 def get_token_scores_s(match):
@@ -1662,12 +1738,6 @@ def token_scores_stacked_bar_chart(matches, ranks=None, highlight=None, show_gap
     
     
 def token_scores_pie_chart(match, plot_size=350):
-    import bokeh.plotting
-    import bokeh.models
-    import bokeh.io
-    import bokeh.palettes
-    import numpy as np
-        
     summary = score_summary(match, get_token_scores_t)
     colors = TokenColors()
 
@@ -1747,15 +1817,23 @@ def token_scores_pie_chart(match, plot_size=350):
     
 def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width=1000):
     if kind == "bar":
-        @widgets.interact(indicate_gap_penalty=False)
-        def plot(indicate_gap_penalty):
+        if _display_mode.static:
             token_scores_stacked_bar_chart(
                 matches,
                 ranks=ranks,
                 highlight=highlight,
-                show_gap_penalty=indicate_gap_penalty,
+                show_gap_penalty=False,
                 plot_width=plot_width)
-        return plot
+        else:
+            @widgets.interact(indicate_gap_penalty=False)
+            def plot(indicate_gap_penalty):
+                token_scores_stacked_bar_chart(
+                    matches,
+                    ranks=ranks,
+                    highlight=highlight,
+                    show_gap_penalty=indicate_gap_penalty,
+                    plot_width=plot_width)
+            return plot
     elif kind == "pie":
         assert ranks is not None
         picked = [matches[i - 1] for i in ranks]
