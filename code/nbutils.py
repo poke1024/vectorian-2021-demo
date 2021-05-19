@@ -66,7 +66,7 @@ def initialize(display_mode="auto"):
     else:
         _display_mode = DisplayMode[display_mode.upper()]
     display(HTML(f"""
-        <div>Running notebook in <span style="background-color: #E0F8E0">{_display_mode.name}</span> mode.</div>"""))
+        <div>Running notebook in <b>{_display_mode.name}</b> mode.</div>"""))
     
     
 #initialize()
@@ -225,7 +225,7 @@ def browse(gold, initial_phrase=1, initial_context=1, rows=5):
         matches = records[query_select.value]["matches"]
         
         html = f"""
-        The phrase <em>{gold.phrases[query_select.value]}</em> occurs in
+        The phrase <b><span style="background-color:#F0F0E0">{gold.phrases[query_select.value]}</span></b> occurs in
         <em>{query_contexts()[context_select.value][0]}</em> as:<br>
         <div style="background-color:#F0F0E0">{formatter.format_context(matches[context_select.value])}</div>
         """
