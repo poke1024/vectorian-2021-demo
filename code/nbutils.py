@@ -91,6 +91,7 @@ def make_nlp():
     return nlp
 
     
+'''
 class Gold:
     def __init__(self, data):
         self._data = data
@@ -130,15 +131,20 @@ class Gold:
         for query in self._data:
             for m in query["matches"]:
                 yield (f"{m['work']}: {m['context']}"[:n] + "..."), m['id']
+'''
 
+
+def occ_digest(occ, n=80):
+    return f"{occ.source.work}: {occ.evidence.context}"[:n] + "..."
+                
     
-class ContextFormatter:
+class OccurenceFormatter:
     def __init__(self):
         pass
     
-    def format_context(self, record):
-        text = record["context"]
-        quote = record["quote"]
+    def format_occurrence(self, occurence):
+        text = occurence.evidence.context
+        quote = occurence.evidence.phrase
         try:
             i = text.index(quote)
             return ''.join([
@@ -155,7 +161,9 @@ class ContextFormatter:
 class DocFormatter:
     def __init__(self, gold):
         self._gold = gold
-        self._fmt = ContextFormatter()
+        self._occ_by_id = dict((x.unique_id, x) for x in gold.occurrences)
+        
+        self._fmt = OccurenceFormatter()
         self._template = string.Template("""
             <div style="margin-left:2em">
                 <span style="font-variant:small-caps; font-size: 14pt;">${title}</style>
@@ -165,15 +173,15 @@ class DocFormatter:
             </div>
             """)
        
-    def format_context(self, doc):
-        return self._fmt.format_context(
-            self._gold.by_id[doc.unique_id]["match"])
+    def format_occurrence(self, doc):
+        return self._fmt.format_occurrence(
+            self._occ_by_id[doc.unique_id])
         
     def format_doc(self, doc):
         return self._template.substitute(
-            phrase=self._gold.by_id[doc.unique_id]["query"]["phrase"],
+            phrase=self._occ_by_id[doc.unique_id].pattern.phrase,
             title=doc.metadata["title"],
-            text=self.format_context(doc))
+            text=self.format_occurrence(doc))
 
 
 def format_embedding_name(name):
@@ -193,67 +201,95 @@ def find_index_by_filter(terms, s):
     return min(candidates, key=lambda x: len(x[1]))[0]
 
     
-def browse(gold, initial_phrase=1, initial_context=1, rows=5):
-    formatter = ContextFormatter()
-    records = gold.items
-
-    if isinstance(initial_phrase, str):
-        initial_phrase = find_index_by_filter(
-            gold.phrases, initial_phrase) + 1
-    
-    query_select = widgets.Select(
-        options=[(k, i) for i, k in enumerate(gold.phrases)],
-        value=initial_phrase - 1,
-        rows=rows,
-        description='phrase:')
-
-    def query_contexts():
-        matches = records[query_select.value]["matches"]
-        return [(x["work"], i) for i, x in enumerate(matches)]
-    
-    if isinstance(initial_context, str):
-        initial_context = find_index_by_filter(
-            [x[0] for x in query_contexts()], initial_context) + 1
-
-    context_select = widgets.Select(
-        options=query_contexts(),
-        value=initial_context - 1,
-        rows=rows,
-        description='occurs in:')
-
-    if _display_mode.static:
-        matches = records[query_select.value]["matches"]
+class Browser:
+    def __init__(self, gold, initial_phrase=1, initial_context=1, rows=5):
+        self._gold = gold
         
-        html = f"""
-        The phrase <b><span style="background-color:#F0F0E0">{gold.phrases[query_select.value]}</span></b> occurs in
-        <em>{query_contexts()[context_select.value][0]}</em> as:<br>
-        <div style="background-color:#F0F0E0">{formatter.format_context(matches[context_select.value])}</div>
-        """
-        
-        return IPython.core.display.HTML(html)
-    else:
-        context_display = widgets.HTML("", description="as:")
+        formatter = OccurenceFormatter()
 
-        def on_phrase_change(change):
-            context_select.unobserve(on_context_change)
-            context_select.options = query_contexts()
-            context_select.value = 0
+        if isinstance(initial_phrase, str):
+            initial_phrase = find_index_by_filter(
+                [p.phrase for p in gold.patterns], initial_phrase) + 1
+
+        pattern_select = widgets.Dropdown(
+            options=[(p.phrase, i) for i, p in enumerate(gold.patterns)],
+            value=initial_phrase - 1,
+            rows=rows,
+            description='pattern:')
+        self._pattern_select = pattern_select
+
+        def query_contexts():
+            occurrences = gold.patterns[pattern_select.value].occurrences
+            return [(x.source.work, i) for i, x in enumerate(occurrences)]
+
+        if isinstance(initial_context, str):
+            initial_context = find_index_by_filter(
+                [x[0] for x in query_contexts()], initial_context) + 1
+
+        context_select = widgets.Dropdown(
+            options=query_contexts(),
+            value=initial_context - 1,
+            rows=rows,
+            description='occurs in:')
+        self._context_select = context_select
+
+        if _display_mode.static:
+            occurrences = gold.patterns[pattern_select.value].occurrences
+
+            html = f"""
+            The phrase <b><span style="background-color:#F0F0E0">{gold.patterns[pattern_select.value].phrase}</span></b> occurs in
+            <em>{query_contexts()[context_select.value][0]}</em> as:<br>
+            <div style="background-color:#F0F0E0">{formatter.format_occurrence(occurrences[context_select.value])}</div>
+            """
+
+            display(IPython.core.display.HTML(html))
+        else:
+            context_display = widgets.HTML("", description="as:")
+
+            def on_phrase_change(change):
+                context_select.unobserve(on_context_change)
+                context_select.options = query_contexts()
+                context_select.value = 0
+                context_select.observe(on_context_change)
+                on_context_change(None)
+
+            def on_context_change(change):
+                occurrences = gold.patterns[pattern_select.value].occurrences
+                works = query_contexts()
+                i = context_select.value
+                context_display.value = formatter.format_occurrence(occurrences[i])
+
+            pattern_select.observe(on_phrase_change)
             context_select.observe(on_context_change)
             on_context_change(None)
 
-        def on_context_change(change):
-            matches = records[query_select.value]["matches"]
-            works = query_contexts()
-            i = context_select.value
-            context_display.value = formatter.format_context(matches[i])
-
-        query_select.observe(on_phrase_change)
-        context_select.observe(on_context_change)
-        on_context_change(None)
-
-        return widgets.HBox([query_select, context_select, context_display])    
+            display(widgets.VBox([
+                widgets.HBox([pattern_select, context_select]),
+                context_display
+            ]))
+            
+    @property
+    def occurrence(self):
+        occurrences = self._gold.patterns[self._pattern_select.value].occurrences
+        return occurrences[self._context_select.value]
     
     
+    
+class TokenSimVis:
+    def __init__(self, session, nlp, gold):
+        self._session = session
+        self._nlp = nlp
+        self._gold = gold
+    
+    def goto(self, initial_phrase=1, initial_context=1):
+        self._browser = Browser(self._gold, initial_phrase, initial_context)
+
+    def plot(self, pivot):
+        plot_token_similarity(
+            self._session, self._nlp, self._gold, pivot, self._browser.occurrence, n_figures=3)
+    
+    
+
 class TSNECallback(openTSNE.callbacks.Callback):
     def optimization_about_to_start(self):
         pass
@@ -275,12 +311,12 @@ class EmbeddingPlotter:
         DocData = collections.namedtuple("DocData", ["doc", "query", "work"])
 
         docs = []
-        for q in self._gold.items:
-            for m in q["matches"]:
+        for pattern in self._gold.patterns:
+            for occ in pattern.occurrences:
                 docs.append(DocData(
-                    doc=self._id_to_doc[m["id"]],
-                    query=q["phrase"],
-                    work=m["work"]))
+                    doc=self._id_to_doc[occ.unique_id],
+                    query=pattern.phrase,
+                    work=occ.source.work))
         self._docs = docs
         
         self._partition = session.partition("document")
@@ -358,13 +394,12 @@ class EmbeddingPlotter:
         phrases.append(intruder)
         contexts.append("")
 
-        for q in self._gold.items:
-            for m in q["matches"]:
-                doc = id_to_doc[m["id"]]
-                query_docs.append(doc)
-                works.append(m["work"])
-                phrases.append(q['phrase'])
-                contexts.append(self._doc_formatter.format_context(doc))
+        for occ in self._gold.occurrences:
+            doc = id_to_doc[occ.unique_id]
+            query_docs.append(doc)
+            works.append(occ.source.work)
+            phrases.append(occ.pattern.phrase)
+            contexts.append(self._doc_formatter.format_occurrence(doc))
 
         data = {
             'work': works,
@@ -444,8 +479,8 @@ class EmbeddingPlotter:
 
             intruder_select = bokeh.models.Select(
                 title="",
-                value=self._gold.phrases[0],
-                options=self._gold.phrases)
+                value=self._gold.patterns[0].phrase,
+                options=[p.phrase for p in self._gold.patterns])
             intruder_free = bokeh.models.TextInput(value="", title="")
 
             query_tab1 = bokeh.models.Panel(child=bokeh.models.Div(text=""), title="no locator")
@@ -461,8 +496,8 @@ class EmbeddingPlotter:
                 options=encoder_names)
             
             intruder_select = widgets.Dropdown(
-                value=self._gold.phrases[0],
-                options=self._gold.phrases)
+                value=[p.phrase for p in self._gold.patterns][0],
+                options=[p.phrase for p in self._gold.patterns])
             intruder_free = widgets.Text(value="")
             
             query_tab1 = widgets.HTML("")
@@ -478,8 +513,8 @@ class EmbeddingPlotter:
         
         cmap = bokeh.transform.factor_cmap(
             'query',
-            palette=bokeh.palettes.Category20[len(self._gold.phrases)],
-            factors=self._gold.phrases)
+            palette=bokeh.palettes.Category20[len(self._gold.patterns)],
+            factors=[p.phrase for p in self._gold.patterns])
 
         if has_tok_emb:
             tok_emb_p = bokeh.plotting.figure(
@@ -773,8 +808,9 @@ class EmbeddingPlotter:
                 locator = ("free", locator)
             locator_type, locator_s = locator
             if locator_type == "fixed":
-                intruder_select.value = self._gold.phrases[find_index_by_filter(
-                    self._gold.phrases, locator_s)]
+                phrases = [p.phrase for p in self._gold.patterns]
+                intruder_select.value = phrases[find_index_by_filter(
+                    phrases, locator_s)]
                 query_tabs.active = 1
             elif locator_type == "free":
                 intruder_free.value = locator_s
@@ -885,7 +921,7 @@ class DocEmbeddingExplorer:
         
         
 class TokenSimilarityPlotter:
-    def _create_data(self, doc, ref_token, embedding):
+    def _create_data(self, doc, ref_token, embedding):        
         token_sim = TokenSimilarity(
             self._session.embeddings[embedding].factory,
             CosineSimilarity())
@@ -959,21 +995,21 @@ class TokenSimilarityPlotter:
         if not _display_mode.fully_interactive:
             self._update_figures_html()
             
-    def __init__(self, session, nlp, gold, token, initial_doc=0, n_figures=2, top_n=15):
+    def __init__(self, session, nlp, gold, token, initial_occ=None, n_figures=2, top_n=15):
         self._session = session
         self._nlp = nlp
         self._gold = gold
-        
-        doc_digests = sorted(gold.doc_digests(), key=lambda x: x[0])
+
+        #self._occs = dict((x.unique_id, x) for x in gold.occurences)
+        #doc_digests = sorted(gold.doc_digests(), key=lambda x: x[0])
         self._doc_id_to_doc = dict((x.unique_id, x) for x in self._session.documents)
         self._embedding_names = sorted(session.embeddings.keys(), key=lambda x: len(x))
         
-        if isinstance(initial_doc, str):
-            i = find_index_by_filter([x[0] for x in doc_digests], initial_doc)
-            initial_select_value = doc_digests[i][1]
+        if initial_occ is None:
+            initial_occ_id = gold.occurences[0].unique_id
         else:
-            initial_select_value = doc_digests[initial_doc][1]
-
+            initial_occ_id = initial_occ.unique_id
+        
         self._figures = None
         self._n_figures = min(n_figures, len(session.embeddings))
         self._height_per_token = 20
@@ -982,7 +1018,7 @@ class TokenSimilarityPlotter:
         if _display_mode.bokeh:
             self._token_text = bokeh.models.TextInput(value=token)
             self._doc_select = bokeh.models.Select(
-                options=[(v, k) for k, v in doc_digests], value=initial_select_value)
+                options=[(occ.unique_id, occ_digest(occ)) for occ in gold.occurrences], value=initial_occ_id)
             #self._top_n = bokeh.models.Slider(start=5, end=100, step=5, value=15, title="top n")
 
             if _display_mode.static:
@@ -994,7 +1030,9 @@ class TokenSimilarityPlotter:
             #self._top_n.on_change("value", lambda attr, old, new: self._update())
         else:
             self._token_text = widgets.Text(value=token)
-            self._doc_select = widgets.Dropdown(options=doc_digests, value=initial_select_value)
+            self._doc_select = widgets.Dropdown(
+                options=[(occ_digest(occ), occ.unique_id) for occ in gold.occurences],
+                value=initial_occ_id)
             self._token_text.observe(lambda change: self._update(), names='value')
             self._doc_select.observe(lambda change: self._update(), names='value')
 
@@ -1097,8 +1135,8 @@ class TokenSimilarityPlotter:
             self._update_figures_html()
 
             
-def plot_token_similarity(session, nlp, gold, token="high", doc=0, n_figures=2, top_n=15):
-    plotter = TokenSimilarityPlotter(session, nlp, gold, token, doc, n_figures=n_figures, top_n=top_n)
+def plot_token_similarity(session, nlp, gold, token="high", occ=None, n_figures=2, top_n=15):
+    plotter = TokenSimilarityPlotter(session, nlp, gold, token, occ, n_figures=n_figures, top_n=top_n)
     if _display_mode.fully_interactive:
         bokeh.io.show(plotter.create)
     else:
@@ -1136,21 +1174,20 @@ class NDCGComputer:
         self._gold = gold
         
         to_index = {}
-        for q in self._gold.items:
-            for m in q["matches"]:
-                to_index[m["id"]] = len(to_index)
+        for occ in self._gold.occurrences:
+            to_index[occ.unique_id] = len(to_index)
         self._to_index = to_index
         self._num_docs = len(to_index)
 
-    def from_matches(self, matches, query):
+    def from_matches(self, matches, pattern):
         recommended = [m.doc.unique_id for m in matches]
-        relevant = [m["id"] for m in query["matches"]]
+        relevant = [x.unique_id for x in pattern.occurrences]
         return ndcg(recommended, relevant, len(recommended))
     
-    def from_index(self, index, query):
+    def from_index(self, index, pattern):
         k = self._num_docs  # i.e. return ranking of full corpus
-        result = index.find(query["phrase"], n=k, disable_progress=True)
-        return self.from_matches(result.matches, query)
+        result = index.find(pattern.phrase, n=k, disable_progress=True)
+        return self.from_matches(result.matches, pattern)
 
     
 class NDCGPlotter:
@@ -1158,11 +1195,11 @@ class NDCGPlotter:
         self._ndcg = NDCGComputer(gold)
 
         self._gold = gold
-        phrase = ([f"mean NDCG"] + self._gold.phrases)[::-1]
+        phrase = ([f"mean NDCG"] + [p.phrase for p in self._gold.patterns])[::-1]
         self._phrase = phrase
 
         p = bokeh.plotting.figure(
-            y_range=phrase, plot_width=1000, plot_height=20 * len(self._gold.phrases),
+            y_range=phrase, plot_width=1000, plot_height=20 * len(self._gold.patterns),
             title="",
             toolbar_location=None, tools="")
         p.x_range = bokeh.models.Range1d(0, 1)
@@ -1173,7 +1210,7 @@ class NDCGPlotter:
         self._bokeh_handle = None
 
     def _ndcg_array(self, index):
-        ndcg = [self._ndcg.from_index(index, q) for q in self._gold.items]
+        ndcg = [self._ndcg.from_index(index, p) for p in self._gold.patterns]
         return ([np.average(ndcg)] + ndcg)[::-1]
     
     def _format_ndcg(self, ndcg):
@@ -1219,7 +1256,7 @@ class NDCGPlotter:
         
         self._p = bokeh.plotting.figure(
             y_range=bokeh.models.FactorRange(*y),
-            plot_width=1000, plot_height=20 * len(self._gold.phrases) * len(indices),
+            plot_width=1000, plot_height=20 * len(self._gold.patterns) * len(indices),
             title="",
             toolbar_location=None, tools="")
         self._p.x_range = bokeh.models.Range1d(0, 1)
@@ -1347,15 +1384,16 @@ class ResultScoresPlotter:
         self._result = None
         self._result_html = None
         
-        default_query = gold.phrases[0]
+        default_query = gold.patterns[0].phrase
         if query is not None:
-            candidates = [x for x in gold.phrases if x.startswith(query)]
+            candidates = [x for x in gold.patterns if x.phrase.startswith(query)]
             if len(candidates) > 0:
-                default_query = candidates[0]
+                default_query = candidates[0].phrase
         self._default_query = default_query
 
+        phrases = [p.phrase for p in gold.patterns]
         self._query_select = bokeh.models.Select(
-            title='', options=self._gold.phrases, value=self._default_query)
+            title='', options=phrases, value=self._default_query)
         
     @property
     def matches(self):
@@ -1369,13 +1407,14 @@ class ResultScoresPlotter:
             return self._result.matches[self._selected_rank - 1]
 
     def _run_query(self):
-        query = self._gold.items[self._gold.phrases.index(self._query_select.value)]
-        n = self._gold.num_contexts
-        gold_matches = [x["id"] for x in query["matches"]]
-        result = self._index.find(query["phrase"], n=n, disable_progress=True)
+        phrases = [p.phrase for p in self._gold.patterns]
+        pattern = self._gold.patterns[phrases.index(self._query_select.value)]
+        n = len(self._gold.occurrences)
+        gold_matches = [x.unique_id for x in pattern.occurrences]
+        result = self._index.find(pattern.phrase, n=n, disable_progress=True)
         self._result = result
             
-        ndcg = self._ndcg.from_matches(result.matches, query)
+        ndcg = self._ndcg.from_matches(result.matches, pattern)
         title = ""  #f"Scores for Query '{query['phrase']}', NDCG={ndcg * 100:.1f}%"            
             
         base_hue = [0.8 if m.doc.unique_id in gold_matches else 0.2 for m in result.matches]
@@ -1512,7 +1551,7 @@ def plot_gold(gold):
     phrase = {}
     context = {}
     
-    formatter = ContextFormatter()
+    formatter = OccurenceFormatter()
     palette = bokeh.palettes.Spectral4
 
     doc_template = string.Template("""
@@ -1524,25 +1563,25 @@ def plot_gold(gold):
         </div>
         """)
     
-    for i, record in enumerate(gold.items):
-        G.add_node(record["phrase"])
-        color[record["phrase"]] = palette[0]
-        subset[record["phrase"]] = i
+    for i, pattern in enumerate(gold.patterns):
+        G.add_node(pattern.phrase)
+        color[pattern.phrase] = palette[0]
+        subset[pattern.phrase] = i
         
-        phrase_html = f'<i>{record["phrase"]}</i>'
-        phrase[record["phrase"]] = phrase_html
-        context[record["phrase"]] = ""
+        phrase_html = f'<i>{pattern.phrase}</i>'
+        phrase[pattern.phrase] = phrase_html
+        context[pattern.phrase] = ""
 
-        for m in record["matches"]:
-            phrase[m["id"]] = ""  # phrase_html + "<hr>"
-            context[m["id"]] = doc_template.substitute(
-                title=m["work"],
-                phrase=record["phrase"],
-                text=formatter.format_context(m))
+        for occ in pattern.occurrences:
+            phrase[occ.unique_id] = ""  # phrase_html + "<hr>"
+            context[occ.unique_id] = doc_template.substitute(
+                title=occ.source.work,
+                phrase=occ.evidence.phrase,
+                text=formatter.format_occurrence(occ))
 
-            G.add_edge(record["phrase"], m["id"])
-            color[m["id"]] = palette[1]
-            subset[m["id"]] = i
+            G.add_edge(pattern.phrase, occ.unique_id)
+            color[occ.unique_id] = palette[1]
+            subset[occ.unique_id] = i
 
     nx.set_node_attributes(G, color, "node_color")
     nx.set_node_attributes(G, subset, "subset")
@@ -1551,7 +1590,7 @@ def plot_gold(gold):
             
     plot = bokeh.models.Plot(
         plot_width=1000, plot_height=400,
-        x_range=bokeh.models.Range1d(-1.1, 1.1), y_range=bokeh.models.Range1d(-0.8, 0.8),
+        x_range=bokeh.models.Range1d(-1.1, 1.1), y_range=bokeh.models.Range1d(-1.1, 1.1),
         output_backend="svg")
     
     node_hover_tool = bokeh.models.HoverTool(
@@ -1561,8 +1600,8 @@ def plot_gold(gold):
         """)
     plot.add_tools(node_hover_tool)
 
-    graph_renderer = bokeh.plotting.from_networkx(G, nx.multipartite_layout, scale=1, center=(0, 0))
-    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size=12, fill_color="node_color")
+    graph_renderer = bokeh.plotting.from_networkx(G, nx.spring_layout, scale=0.9, k=0.095, center=(0, 0))
+    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size=7.5, fill_color="node_color")
     graph_renderer.edge_renderer.glyph = bokeh.models.MultiLine(line_color="black", line_alpha=1, line_width=1.5)
     plot.renderers.append(graph_renderer)
 
@@ -1573,7 +1612,7 @@ def plot_gold(gold):
     tok_emb_p.add_layout(token_labels)
     '''
     
-    return plot
+    bokeh.io.show(plot)
     
 
 def get_token_scores_s(match):
