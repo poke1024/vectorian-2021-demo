@@ -1209,15 +1209,19 @@ class NDCGPlotter:
         self._p = p        
         self._bokeh_handle = None
 
-    def _ndcg_array(self, index):
-        ndcg = [self._ndcg.from_index(index, p) for p in self._gold.patterns]
+    def _ndcg_array(self, index, pbar):
+        ndcg = []
+        for p in self._gold.patterns:
+            ndcg.append(self._ndcg.from_index(index, p))
+            pbar.update(1)
         return ([np.average(ndcg)] + ndcg)[::-1]
     
     def _format_ndcg(self, ndcg):
         return ['%.1f%%' % (x * 100) for x in ndcg]
             
     def update_ungrouped(self, index):
-        ndcg = self._ndcg_array(index)
+        with tqdm(total=len(self._gold.patterns)) as pbar:
+            ndcg = self._ndcg_array(index, pbar)
         
         if self._bokeh_handle is None:
             self._source = bokeh.models.ColumnDataSource({
@@ -1265,7 +1269,8 @@ class NDCGPlotter:
         
         self._p.yaxis.group_label_orientation = 0
        
-        ndcg = np.array([self._ndcg_array(index) for index in tqdm(indices)])[::-1]
+        with tqdm(total=len(self._gold.patterns) * len(indices)) as pbar:
+            ndcg = np.array([self._ndcg_array(index, pbar) for index in indices])[::-1]
         flat_ndcg = np.transpose(ndcg).flatten()
         
         color = np.repeat(
@@ -1340,6 +1345,10 @@ class InteractiveQuery:
     
     def create_index(self):
         return self._session.partition("document").index(self._ui.make(), self._nlp)
+    
+    @property
+    def ordered_embedding(self):
+        return sorted(list(self._session.embeddings.items()), key=lambda x: x[0])
 
         
 class InteractiveIndexBuilder:
@@ -1353,17 +1362,25 @@ class InteractiveIndexBuilder:
         self._query_ui = query_ui
         
         if _display_mode.static:
-            display(IPython.core.display.HTML(f"""
-            <div style="background-color:#E0F0E0; margin-left: 2em; padding: 0.4em;">
-                {query_ui.summary_widget.value}
-            </div>
-            """))
+            self._displayable = IPython.core.display.HTML(f"""
+                <div style="background-color:#E0F0E0; margin-left: 2em; padding: 0.4em;">
+                    {query_ui.summary_widget.value}
+                </div>
+                """)
         else:
             tab = widgets.Tab(
                 children=[query_ui.summary_widget, query_ui.widget])
             for i, title in enumerate(['Index Summary', 'Edit']):
                 tab.set_title(i, title)
-            display(tab)
+            self._displayable = tab
+            
+    
+    @property
+    def displayable(self):
+        return self._displayable
+    
+    def _ipython_display_(self):
+        display(self._displayable)
                     
     def build_index(self):
         return self._query_ui.create_index()
