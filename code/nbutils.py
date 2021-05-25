@@ -90,49 +90,6 @@ def make_nlp():
     nlp.meta["name"] = "core_web_sm_AND_en_paraphrase_distilroberta_base_v1"
     return nlp
 
-    
-'''
-class Gold:
-    def __init__(self, data):
-        self._data = data
-        
-    @cached_property
-    def num_contexts(self):
-        return sum(len(q["matches"]) for q in self._data)
-        
-    @property
-    def phrases(self):
-        return [q["phrase"] for q in self._data]
-    
-    def matches(self, phrase):
-        for q in self._data:
-            if q["phrase"] == phrase:
-                return q["matches"]
-        return []
-
-    @property
-    def items(self):
-        return self._data
-
-    @cached_property
-    def by_id(self):
-        doc_details = {}
-
-        for query in self._data:
-            for m in query["matches"]:
-                doc_details[m["id"]] = {
-                    'query': query,
-                    'match': m
-                }
-
-        return doc_details
-    
-    def doc_digests(self, n=80):
-        for query in self._data:
-            for m in query["matches"]:
-                yield (f"{m['work']}: {m['context']}"[:n] + "..."), m['id']
-'''
-
 
 def occ_digest(occ, n=80):
     return f"{occ.source.work}: {occ.evidence.context}"[:n] + "..."
@@ -1605,9 +1562,22 @@ def plot_gold(gold):
     nx.set_node_attributes(G, phrase, "phrase")
     nx.set_node_attributes(G, context, "context")
             
+    fixed = []
+    pos = {}
+    for i, pattern in enumerate(gold.patterns):
+        fixed.append(pattern.phrase)
+        y = i // 8
+        x = i % 8
+        s = 0.75
+        pos[pattern.phrase] = (x * s, y * s)
+
+    pos_arr = np.array(list(pos.values()))
+    pad = 1
+        
     plot = bokeh.models.Plot(
         plot_width=1000, plot_height=400,
-        x_range=bokeh.models.Range1d(-1.1, 1.1), y_range=bokeh.models.Range1d(-1.1, 1.1),
+        x_range=bokeh.models.Range1d(np.min(pos_arr[:, 0]) - pad, np.max(pos_arr[:, 0]) + pad),
+        y_range=bokeh.models.Range1d(np.min(pos_arr[:, 1]) - pad, np.max(pos_arr[:, 1]) + pad),
         output_backend="svg")
     
     node_hover_tool = bokeh.models.HoverTool(
@@ -1616,9 +1586,10 @@ def plot_gold(gold):
         @context
         """)
     plot.add_tools(node_hover_tool)
-
-    graph_renderer = bokeh.plotting.from_networkx(G, nx.spring_layout, scale=0.9, k=0.095, center=(0, 0))
-    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size=7.5, fill_color="node_color")
+    
+    graph_renderer = bokeh.plotting.from_networkx(
+        G, nx.spring_layout, fixed=fixed, pos=pos, scale=0.5, k=0.15, center=(0, 0), iterations=100)
+    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size=10, fill_color="node_color")
     graph_renderer.edge_renderer.glyph = bokeh.models.MultiLine(line_color="black", line_alpha=1, line_width=1.5)
     plot.renderers.append(graph_renderer)
 
@@ -1901,3 +1872,78 @@ def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width
             figures, ncols=n_cols, plot_width=plot_size, plot_height=plot_size * n_rows))
     else:
         raise ValueError(kind)
+
+        
+def plot_embedding_vectors(labels, vectors, palette, bg, extra_height=0, w_format="0.00"):    
+    words = labels[::-1]
+    vecs = np.array(vectors[::-1])
+
+    dims = vecs.shape[-1]
+    vecs = vecs.flatten()
+    
+    source = bokeh.models.ColumnDataSource({
+        'x': np.array(list(range(dims)) * len(words)) + 1,
+        'y': list(itertools.chain(*[[word] * dims for word in words])),
+        'w': vecs
+    })
+
+    color_mapper = bokeh.models.LinearColorMapper(
+        palette=palette, low=np.amin(vecs), high=np.amax(vecs))
+    
+    p = bokeh.plotting.figure(
+        y_range=words,
+        x_axis_type=None,
+        x_range=(1 - 0.5, dims + 0.5),
+        plot_width=900,
+        plot_height=30 * len(words) + 20 + extra_height,
+        title="",
+        toolbar_location="below",
+        tools="pan, wheel_zoom, box_zoom, reset",
+        active_drag="box_zoom",
+        tooltips=[("dim", "@x"), ("w", "@w{%s}" % w_format)])
+
+    p.background_fill_color = "black"
+    p.background_fill_alpha = bg
+    
+    p.square(source=source, size=10, color={'field': 'w', 'transform': color_mapper})
+
+    p.xgrid.grid_line_color = None
+    p.ygrid.grid_line_color = None
+    
+    if dims <= 50:
+        ticker = bokeh.models.SingleIntervalTicker(interval=5, num_minor_ticks=5)
+    else:
+        ticker = bokeh.models.SingleIntervalTicker(interval=10, num_minor_ticks=2)
+    xaxis = bokeh.models.LinearAxis(ticker=ticker)
+    p.add_layout(xaxis, 'below')
+    
+    color_bar = bokeh.models.ColorBar(
+        color_mapper=color_mapper, label_standoff=3, margin=20, height=5, padding=5)
+    p.add_layout(color_bar, 'above')
+    
+    bokeh.io.show(p)
+    
+    
+def _embedding_vectors(words, get_vec):
+    def get_norm_vec(word):
+        v = get_vec(word)
+        return v / np.linalg.norm(v)
+    
+    return np.array([get_norm_vec(word) for word in words])
+    
+
+def plot_embedding_vectors_val(words, get_vec):
+    vecs = _embedding_vectors(words, get_vec)
+    plot_embedding_vectors(words, vecs, "Viridis256", 0.7)
+    
+
+def plot_embedding_vectors_mul(pairs, get_vec):    
+    words = []
+    vecs = []
+    for u, v in pairs:
+        words.append(u + "-" + v)
+        u_vec, v_vec = _embedding_vectors([u, v], get_vec)
+        vecs.append([u_vec * v_vec])
+    vecs = np.array(vecs)
+    
+    plot_embedding_vectors(words, vecs, "Inferno256", 1, 20, w_format="0.0000")
