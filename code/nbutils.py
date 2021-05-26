@@ -1924,16 +1924,19 @@ def plot_embedding_vectors(labels, vectors, palette, bg, extra_height=0, w_forma
     bokeh.io.show(p)
     
     
-def _embedding_vectors(words, get_vec):
-    def get_norm_vec(word):
-        v = get_vec(word)
-        return v / np.linalg.norm(v)
-    
-    return np.array([get_norm_vec(word) for word in words])
+def _embedding_vectors(words, get_vec, normalize):
+    if normalize:
+        def get_norm_vec(word):
+            v = get_vec(word)
+            return v / np.linalg.norm(v)
+
+        return np.array([get_norm_vec(word) for word in words])
+    else:
+        return np.array([get_vec(word) for word in words])        
     
 
-def plot_embedding_vectors_val(words, get_vec):
-    vecs = _embedding_vectors(words, get_vec)
+def plot_embedding_vectors_val(words, get_vec, normalize=False):
+    vecs = _embedding_vectors(words, get_vec, normalize)
     plot_embedding_vectors(words, vecs, "Viridis256", 0.7)
     
 
@@ -1942,7 +1945,7 @@ def plot_embedding_vectors_mul(pairs, get_vec):
     vecs = []
     for u, v in pairs:
         words.append(u + "-" + v)
-        u_vec, v_vec = _embedding_vectors([u, v], get_vec)
+        u_vec, v_vec = _embedding_vectors([u, v], get_vec, True)
         vecs.append([u_vec * v_vec])
     vecs = np.array(vecs)
     
