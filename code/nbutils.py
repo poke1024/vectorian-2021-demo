@@ -253,16 +253,154 @@ class TSNECallback(openTSNE.callbacks.Callback):
 
     def __call__(self, iteration, error, embedding):
         pass
+
+    
+class DocEmbedderFactory:
+    def __init__(self, session, nlp, doc_encoders={}):
+        self._session = session
+        self._nlp = nlp
+        self._doc_encoders = doc_encoders
+    
+    def create(self, encoder):
+        return DocEmbedder(self._session, self._nlp, self._doc_encoders, encoder)
+
+    
+class DocEmbedder:
+    def __init__(self, session, nlp, doc_encoders={}, encoder=None):
+        self._session = session
+        self._nlp = nlp
+        self._doc_encoders = doc_encoders
+        self._callbacks = []
+
+        self._partition = session.partition("document")
+        
+        Option = collections.namedtuple("Option", ["name", "token_embedding", "doc_encoder"])
+        
+        options = []
+        for k, v in self._session.embeddings.items():
+            options.append(Option(format_embedding_name(k) + " [token]", v, None))
+        for k, v in doc_encoders.items():
+            options.append(Option(format_embedding_name(k) + " [doc]", None, v))
+        self._options = options
+
+        default_option = options[0].name
+        if encoder is not None:
+            default_option = options[find_index_by_filter(
+                [x.name for x in options], encoder)].name
+        
+        agg_options = ["mean", "median", "max", "min"]
+        
+        if _display_mode.bokeh:
+            self._embedding_select = bokeh.models.Select(
+                title="",
+                value=default_option,
+                options=[option.name for option in options])
+
+            self._aggregator = bokeh.models.Select(
+                title="",
+                value=agg_options[0],
+                options=agg_options)
+
+            def embedding_changed_shim(attr, old, new):
+                self.embedding_changed()
+
+            def aggregator_changed_shim(attr, old, new):
+                self.aggregator_changed()
+            
+            self._embedding_select.on_change("value", embedding_changed_shim)
+            self.embedding_changed()
+
+            self._aggregator.on_change("value", aggregator_changed_shim)
+        else:
+            self._embedding_select = widgets.Dropdown(
+                title="",
+                style={'description_width': 'initial', 'width': 'max'},
+                value=default_option,
+                options=[option.name for option in options])
+
+            self._aggregator = bokeh.models.Dropdown(
+                title="",
+                style={'description_width': 'initial', 'width': 'max'},
+                value=agg_options[0],
+                options=agg_options)
+            
+            self._embedding_select.observe(lambda changed: self.embedding_changed(), names="value")
+            self._aggregator.observe(lambda changed: self.aggregator_changed(), names="value")
+             
+    @property
+    def disabled(self):
+        return self._embedding_select.disabled
+                
+    @disabled.setter
+    def disabled(self, value):
+        self._embedding_select.disabled = value
+        self._aggregator.disabled = value
+                
+    def _change_occured(self):
+        for cb in self._callbacks:
+            cb()
+
+    def embedding_changed(self):
+        self._aggregator.visible = self.option.token_embedding is not None
+        self._change_occured()
+            
+    def aggregator_changed(self):
+        self._change_occured()
+
+    @property
+    def session(self):
+        return self._session
+
+    @property
+    def option(self):
+        return self._options[[x.name for x in self._options].index(self._embedding_select.value)]
+    
+    def on_change(self, callback):
+        self._callbacks.append(callback)
+
+    @property
+    def widget(self):       
+        if _display_mode.bokeh:
+            return bokeh.layouts.row(self._embedding_select, self._aggregator)
+        else:
+            return widgets.HBox([self._embedding_select, self._aggregator])
+    
+    def display(self):
+        if _display_mode.bokeh:
+            bokeh.io.show(lambda doc: doc.add_root(self.widget))
+        else:
+            display(self.widget)
+            
+    @property
+    def encoder(self):
+        option = self.option
+        if option.doc_encoder is not None:
+            return option.doc_encoder
+        else:
+            agg = getattr(np, self._aggregator.value)
+            return CachedPartitionEncoder(
+                TokenEmbeddingAggregator(option.token_embedding.factory, agg))
+ 
+    @property
+    def partition(self):
+        return self._partition
+    
+    def mk_query(self, text):
+        return DummyIndex(self.partition).make_query(text)
+    
+    def encode(self, docs):
+        return self.encoder.encode(
+            prepare_docs(docs, self._nlp), self.partition).unmodified
     
 
 class EmbeddingPlotter:    
-    def __init__(self, session, nlp, gold, aggregator):
-        self._session = session
-        self._nlp = nlp
+    def __init__(self, embedder, gold):
+        self._embedder = embedder
         self._gold = gold
+
         self._current_selection = None
 
-        self._id_to_doc = dict((doc.unique_id, doc) for doc in self._session.documents)
+        self._id_to_doc = dict((doc.unique_id, doc) for doc in self.session.documents)
         self._doc_formatter = DocFormatter(gold)
         
         DocData = collections.namedtuple("DocData", ["doc", "query", "work"])
@@ -275,14 +413,7 @@ class EmbeddingPlotter:
                     query=pattern.phrase,
                     work=occ.source.work))
         self._docs = docs
-        
-        self._partition = session.partition("document")
-
-        self.encoders = dict()
-        for k, embedding in session.embeddings.items():
-            self.encoders[format_embedding_name(k) + f" ({aggregator.__name__})"] = CachedPartitionEncoder(
-                TokenEmbeddingAggregator(embedding.factory, aggregator))    
- 
+         
         self._doc_emb_tooltips = """
             <span style="font-variant:small-caps">@work</span>
             <br>
@@ -330,14 +461,17 @@ class EmbeddingPlotter:
 
         self._figures = []
         self._figures_html = []
-        
+
+    @property
+    def session(self):
+        return self._embedder.session
+    
     @property
     def partition(self):
-        return self._partition
+        return self._embedder.partition
     
-    def _compute_source_data(self, embedding, intruder):        
-        encoder = self.encoders[embedding]
-        intruder_doc = DummyIndex(self.partition).make_query(intruder)
+    def _compute_source_data(self, intruder):
+        intruder_doc = self._embedder.mk_query(intruder)
         
         id_to_doc = self._id_to_doc
         query_docs = []
@@ -362,8 +496,7 @@ class EmbeddingPlotter:
             'work': works,
             'query': phrases,
             'context': contexts,
-            'vector': encoder.encode(
-                prepare_docs(query_docs, self._nlp), self.partition).unmodified
+            'vector': self._embedder.encode(query_docs)
         }
         
         include_intruder = not np.any(np.isnan(data['vector']))
@@ -421,19 +554,10 @@ class EmbeddingPlotter:
             script_code.append(x.string)
         self._pw.js_init("\n".join(script_code))
                 
-    def mk_plot(self, bokeh_doc, encoder=0, selection=[], locator=None, has_tok_emb=True, plot_width=1200):
-        encoder_names = sorted(self.encoders.keys())
-        
-        if isinstance(encoder, str):
-            encoder = find_index_by_filter(encoder_names, encoder)
+    def mk_plot(self, bokeh_doc, selection=[], locator=None, plot_width=1200):
+        has_tok_emb = self._embedder.option.token_embedding is not None
         
         if _display_mode.bokeh:
-            embedding_select = bokeh.models.Select(
-                title="",
-                value=encoder_names[encoder],
-                options=encoder_names,
-                margin=(0, 20, 0, 0))
-
             intruder_select = bokeh.models.Select(
                 title="",
                 value=self._gold.patterns[0].phrase,
@@ -448,10 +572,6 @@ class EmbeddingPlotter:
             options_cb = bokeh.models.CheckboxButtonGroup(
                 labels=["legend"], active=[0])
         else:
-            embedding_select = widgets.Dropdown(
-                value=encoder_names[encoder],
-                options=encoder_names)
-            
             intruder_select = widgets.Dropdown(
                 value=[p.phrase for p in self._gold.patterns][0],
                 options=[p.phrase for p in self._gold.patterns])
@@ -465,8 +585,7 @@ class EmbeddingPlotter:
             query_tabs.set_title(1, "fixed locator")
             query_tabs.set_title(2, "free locator")
             
-        source = dict((k, bokeh.models.ColumnDataSource(v)) for k, v in self._compute_source_data(
-            embedding_select.value, "").items())
+        source = dict((k, bokeh.models.ColumnDataSource(v)) for k, v in self._compute_source_data("").items())
         
         cmap = bokeh.transform.factor_cmap(
             'query',
@@ -561,26 +680,28 @@ class EmbeddingPlotter:
         set_tok_emb_status("")
                         
         def update_token_plot(max_token_count=750):
+            selected = source['docs'].selected.indices
+            self._current_selection = [self._docs[i].doc.unique_id for i in selected]
+ 
             if tok_emb_p is None:
                 return
             
-            embedding = self.encoders[embedding_select.value].embedding
+            embedding = self._embedder.encoder.embedding
             if embedding is None:
                 clear_token_plot()
+                set_tok_emb_status("No token embedding.")
                 return
 
-            selected = source['docs'].selected.indices
             if not selected:
                 clear_token_plot()
+                set_tok_emb_status("No selection.")
                 return
-            
-            self._current_selection = [self._docs[i].doc.unique_id for i in selected]
-            
+                        
             token_embedding_data = []
             
             for i in selected:
                 doc_data = self._docs[i]
-                for span in doc_data.doc.spans(self._partition):
+                for span in doc_data.doc.spans(self._embedder.partition):
                     texts = [token.text for token in span]
                     for i, token in enumerate(span):
                         token_embedding_data.append({
@@ -599,7 +720,7 @@ class EmbeddingPlotter:
                 set_tok_emb_status("Selection is too large.<br>Please select fewer documents.")
                 return
                                     
-            token_embedding_vecs = np.array(self._session.word_vec(
+            token_embedding_vecs = np.array(self.session.word_vec(
                 embedding, [x['token'] for x in token_embedding_data]))
 
             mag = np.linalg.norm(token_embedding_vecs, axis=1)
@@ -655,13 +776,18 @@ class EmbeddingPlotter:
                 intruder = ""
             else:
                 intruder = [intruder_select, intruder_free][active - 1].value
-            for k, v in self._compute_source_data(
-                embedding_select.value, intruder).items():
+            for k, v in self._compute_source_data(intruder).items():
                 source[k].data = v
-            update_token_plot()
+            #update_token_plot()
 
             if not _display_mode.fully_interactive:
                 self._update_figures_html()
+                
+        def encoder_changed():
+            update_document_embedding_plot()
+            if selection:
+                id_to_index = dict((doc_data.doc.unique_id, i) for i, doc_data in enumerate(self._docs))
+                source['docs'].selected.indices = [id_to_index[x] for x in selection]
             
         def clear_token_plot():
             if tok_emb_p is None:
@@ -682,7 +808,8 @@ class EmbeddingPlotter:
                 update_document_embedding_plot()
 
             if _display_mode.static:
-                embedding_select.disabled = True
+                # self._embedder.disabled = True
+                #embedding_select.disabled = True
                 intruder_select.disabled = True
                 intruder_free.disabled = True
                 query_tabs.disabled = True
@@ -690,7 +817,8 @@ class EmbeddingPlotter:
                 #    x.disabled = True
                 options_cb.disabled = True
             else:
-                embedding_select.on_change("value", update_document_embedding_plot_shim)
+                self._embedder.on_change(encoder_changed)
+                #embedding_select.on_change("value", update_document_embedding_plot_shim)
                 intruder_select.on_change("value", update_document_embedding_plot_shim)
                 intruder_free.on_change("value", update_document_embedding_plot_shim)
                 query_tabs.on_change("active", update_document_embedding_plot_shim)
@@ -700,7 +828,8 @@ class EmbeddingPlotter:
             def update_document_embedding_plot_shim(changed):
                 update_document_embedding_plot()
 
-            embedding_select.observe(update_document_embedding_plot_shim, names="value")
+            self._embedder.on_change(encoder_changed)
+            #embedding_select.observe(update_document_embedding_plot_shim, names="value")
             intruder_select.observe(update_document_embedding_plot_shim, names="value")
             intruder_free.observe(update_document_embedding_plot_shim, names="value")
             query_tabs.observe(update_document_embedding_plot_shim, names="selected_index")
@@ -787,7 +916,8 @@ class EmbeddingPlotter:
                 figure_widget = doc_emb_p
 
             return bokeh.layouts.column(
-                bokeh.layouts.column(embedding_select, query_tabs, background="#F0F0F0"),
+                self._embedder.widget,
+                bokeh.layouts.column(query_tabs, background="#F0F0F0"),
                 figure_widget,
                 options_cb,
                 sizing_mode="stretch_width")
@@ -814,7 +944,8 @@ class EmbeddingPlotter:
             display(self._pw)
             
             root_widgets = [
-                widgets.VBox([embedding_select, query_tabs]),
+                self._embedder.widget,
+                query_tabs,
                 figure_widget
             ]
             
@@ -826,19 +957,22 @@ class EmbeddingPlotter:
                 
 
                 
-def plot_doc_embeddings(session, nlp, gold, plot_args, aggregator=np.mean, extra_encoders={}):
+def plot_doc_embeddings(embedder_factory, gold, plot_args):
     plotters = []
     
     for args in plot_args:
-        plotter = EmbeddingPlotter(session, nlp, gold, aggregator)
-        for k, v in extra_encoders.items():
-            plotter.encoders[k] = v
+        plotter = EmbeddingPlotter(
+            embedder_factory.create(args.get("encoder")),
+            gold)
         plotters.append(plotter)
 
     if _display_mode.bokeh:
         def mk_root(bokeh_doc):
             widgets = []
             for plotter, kwargs in zip(plotters, plot_args):
+                kwargs = kwargs.copy()
+                if "encoder" in kwargs:
+                    del kwargs["encoder"]
                 widgets.append(plotter.mk_plot(bokeh_doc, **kwargs))
             return bokeh.layouts.row(widgets)
 
@@ -861,19 +995,15 @@ def plot_doc_embeddings(session, nlp, gold, plot_args, aggregator=np.mean, extra
             
             
 class DocEmbeddingExplorer:
-    def __init__(self, **base_args):
-        self._aggregator = widgets.Dropdown(
-            description="token embedding aggregator:",
-            style = {'description_width': 'initial', 'width': 'max'},
-            options=[("mean", np.mean), ("median", np.median), ("max", np.max), ("min", np.min)])
-        display(self._aggregator)
-        self._base_args = base_args
+    def __init__(self, *args, gold, **kwargs):
+        self._embedder_factory = DocEmbedderFactory(*args, **kwargs)
+        self._gold = gold
         
     def plot(self, args):
         return plot_doc_embeddings(
-            plot_args=args,
-            aggregator=self._aggregator.value,
-            **self._base_args)
+            self._embedder_factory,
+            self._gold,
+            args)
 
         
         
