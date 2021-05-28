@@ -2042,14 +2042,16 @@ def plot_embedding_vectors(labels, vectors, palette, bg, extra_height=0, w_forma
     
     if dims <= 50:
         ticker = bokeh.models.SingleIntervalTicker(interval=5, num_minor_ticks=5)
-    else:
+    elif dims <= 500:
         ticker = bokeh.models.SingleIntervalTicker(interval=10, num_minor_ticks=2)
+    else:
+        ticker = bokeh.models.SingleIntervalTicker(interval=50, num_minor_ticks=2)
     xaxis = bokeh.models.LinearAxis(ticker=ticker)
     p.add_layout(xaxis, 'below')
     
     color_bar = bokeh.models.ColorBar(
         color_mapper=color_mapper, label_standoff=3, margin=20, height=5, padding=5)
-    p.add_layout(color_bar, 'above')
+    p.add_layout(color_bar, 'below')
     
     bokeh.io.show(p)
     
@@ -2080,3 +2082,47 @@ def plot_embedding_vectors_mul(pairs, get_vec):
     vecs = np.array(vecs)
     
     plot_embedding_vectors(words, vecs, "Inferno256", 1, 20, w_format="0.0000")
+
+    
+class DocEmbeddingBars:
+    def __init__(self, embedder, session, gold_data):
+        self._embedder = embedder
+        self._gold_data = gold_data
+        
+        self._id_to_doc = dict((doc.unique_id, doc) for doc in session.documents)
+        self._phrases = [x.phrase for x in gold_data.patterns]
+    
+    def plot_doc_emb(self, match_pattern, mismatch_pattern):
+        match_i = self._phrases.index(match_pattern)
+        mismatch_i = self._phrases.index(mismatch_pattern)
+
+        items = {}
+        doc_names = []
+
+        items["pattern"] = self._embedder.mk_query(self._gold_data.patterns[match_i].phrase)
+        for i, x in enumerate(self._gold_data.patterns[match_i].occurrences):
+            name = f"match {i + 1}"
+            items[name] = self._id_to_doc[x.unique_id]
+            doc_names.append(name)
+        for i, x in enumerate(self._gold_data.patterns[mismatch_i].occurrences):
+            name = f"mismatch {i + 1}"
+            items[name] = self._id_to_doc[x.unique_id]
+            doc_names.append(name)
+
+        pairs = []
+        for name in doc_names:
+            pairs.append(("pattern", name))
+
+        plot_embedding_vectors_mul(
+            pairs, get_vec=lambda w: self._embedder.encode([items[w]])[0])
+
+    def plot(self, default_pattern, default_contrast):
+        @widgets.interact(
+            pattern=widgets.Dropdown(
+                options=self._phrases,
+                value=self._phrases[find_index_by_filter(self._phrases, default_pattern)]),
+            contrast=widgets.Dropdown(
+                options=self._phrases,
+                value=self._phrases[find_index_by_filter(self._phrases, default_contrast)]))
+        def plot(pattern, contrast):
+            self.plot_doc_emb(pattern, contrast)
