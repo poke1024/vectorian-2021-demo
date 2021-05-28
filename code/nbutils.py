@@ -88,7 +88,7 @@ def initialize(display_mode="auto"):
 
 def _bokeh_show(root):
     bokeh.io.show(root)
-    bokeh.io.export_png(root, filename="/Users/arbeit/Desktop/bokeh.png", width=1200)
+    #bokeh.io.export_png(root, filename="/Users/arbeit/Desktop/bokeh.png", width=1200)
     #bokeh.io.export_svg(root, filename="/Users/arbeit/Desktop/bokeh.svg")
 
 
