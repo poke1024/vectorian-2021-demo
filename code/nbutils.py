@@ -5,6 +5,7 @@ import collections
 import numpy as np
 import math
 import os
+import sys
 import enum
 import sklearn.metrics
 import itertools
@@ -31,6 +32,13 @@ from cached_property import cached_property
 from IPython.core.display import HTML, display
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+from pathlib import Path
+
+if os.environ.get("VECTORIAN_DEV"):
+    os.environ["VECTORIAN_CPP_IMPORT"] = "1"
+    vectorian_path = Path("/Users/arbeit/Projects/vectorian-2021")
+    sys.path.append(str(vectorian_path))
+    import vectorian
 
 from vectorian.embeddings import TokenEmbeddingAggregator, prepare_docs
 from vectorian.embeddings import CachedPartitionEncoder
@@ -55,6 +63,13 @@ class DisplayMode(enum.Enum):
 
 _display_mode = DisplayMode.EXPORT
 
+def default_plot_width():
+    if _display_mode.static:
+        return 600
+    else:
+        return 1000
+
+    
 def running_inside_binder():
     return os.environ.get("BINDER_SERVICE_HOST") is not None
 
@@ -68,17 +83,23 @@ def initialize(display_mode="auto"):
     display(HTML(f"""
         <div>Running notebook in <b>{_display_mode.name}</b> mode.</div>"""))
     
-    
-#initialize()
+    bokeh.io.output_notebook()
+        
 
-    
+def _bokeh_show(root):
+    bokeh.io.show(root)
+    bokeh.io.export_png(root, filename="/Users/arbeit/Desktop/bokeh.png", width=1200)
+    #bokeh.io.export_svg(root, filename="/Users/arbeit/Desktop/bokeh.svg")
+
+
 def make_limited_function_warning_widget(action_text):
-    info_text = ("This visualization has limited interactivity due to technical constraints.<br>" +
-        "Run this notebook on a local Jupyter installation (with Bokeh server support) in order to " +
+    more_text = ("Run this notebook on a local Jupyter installation (with Bokeh server support) in order to " +
         f"interactively {action_text}.")
+    info_text = ('&#x26a0; This visualization has some limited interactivity due to technical constraints in Binder. ' + 
+        f'<a href="#" onclick="alert(\'{more_text}\');">learn more...</a>')
     return widgets.HTML(
-        value=f'<b><p style="text-align:center"><font color="red">{info_text}</p></b>',
-        layout=widgets.Layout(border='solid 1px red'))
+        value=f'<b><p style="text-align:center"><font color="#F4D03F">{info_text}</p></b>',
+        layout=widgets.Layout(border='solid 1px #F9E79F'))
 
 
 def make_nlp():
@@ -171,12 +192,13 @@ class Browser:
         pattern_select = widgets.Dropdown(
             options=[(p.phrase, i) for i, p in enumerate(gold.patterns)],
             value=initial_phrase - 1,
-            rows=rows,
-            description='pattern:')
+            #rows=rows,
+            description='pattern:',
+            layout={'description_width': 'initial', 'width': 'max-content'})
         self._pattern_select = pattern_select
 
         def query_contexts():
-            occurrences = gold.patterns[pattern_select.value].occurrences
+            occurrences = gold.patterns[int(pattern_select.value)].occurrences
             return [(x.source.work, i) for i, x in enumerate(occurrences)]
 
         if isinstance(initial_context, str):
@@ -186,11 +208,12 @@ class Browser:
         context_select = widgets.Dropdown(
             options=query_contexts(),
             value=initial_context - 1,
-            rows=rows,
-            description='occurs in:')
+            #rows=rows,
+            description='occurs in:',
+            layout={'description_width': 'initial', 'width': 'max-content'})
         self._context_select = context_select
 
-        if _display_mode.static:
+        if False and _display_mode.static:
             occurrences = gold.patterns[pattern_select.value].occurrences
 
             html = f"""
@@ -200,8 +223,37 @@ class Browser:
             """
 
             display(IPython.core.display.HTML(html))
+
+        elif _display_mode.static:
+
+            pattern_select = bokeh.models.Select(
+                options=[(str(i), p.phrase) for i, p in enumerate(gold.patterns)],
+                value=str(initial_phrase - 1),
+                title='pattern:',
+                width=300)
+
+            context_select = bokeh.models.Select(
+                options=[(str(v), k) for k, v in query_contexts()],
+                value=str(initial_context - 1),
+                title='occurs in:',
+                width=300)
+
+            occurrences = gold.patterns[int(pattern_select.value)].occurrences
+            works = query_contexts()
+            i = int(context_select.value)
+                
+            context_display = bokeh.models.Div(
+                text=formatter.format_occurrence(occurrences[i]), width=550)
+                
+            root = bokeh.layouts.column(
+                bokeh.layouts.row(pattern_select, context_select),
+                bokeh.layouts.row(bokeh.models.Div(text="as:", width=50), context_display))
+                
+            _bokeh_show(root)
+                        
         else:
-            context_display = widgets.HTML("", description="as:")
+            context_display = widgets.HTML(
+                "", description="as:", style={'description_width': 'initial', 'width': 'max'})
 
             def on_phrase_change(change):
                 context_select.unobserve(on_context_change)
@@ -214,7 +266,7 @@ class Browser:
                 occurrences = gold.patterns[pattern_select.value].occurrences
                 works = query_contexts()
                 i = context_select.value
-                context_display.value = formatter.format_occurrence(occurrences[i])
+                context_display.value = formatter.format_occurrence(occurrences[i]) + f' <span style="float:right;"><i>{occurrences[i].unique_id}</i></span>'
 
             pattern_select.observe(on_phrase_change)
             context_select.observe(on_context_change)
@@ -232,19 +284,21 @@ class Browser:
     
     
     
-class TokenSimVis:
+class TokenSimPlotterFactory:
     def __init__(self, session, nlp, gold):
         self._session = session
         self._nlp = nlp
         self._gold = gold
     
-    def goto(self, initial_phrase=1, initial_context=1):
-        self._browser = Browser(self._gold, initial_phrase, initial_context)
+    def make(self, initial_phrase=1, initial_context=1):
+        browser = Browser(self._gold, initial_phrase, initial_context)
 
-    def plot(self, pivot):
-        plot_token_similarity(
-            self._session, self._nlp, self._gold, pivot, self._browser.occurrence, n_figures=3)
-    
+        def plot(pivot):
+            plot_token_similarity(
+                self._session, self._nlp, self._gold, pivot, browser.occurrence, n_figures=3)
+   
+        return plot
+
     
 
 class TSNECallback(openTSNE.callbacks.Callback):
@@ -294,7 +348,8 @@ class DocEmbedder:
             self._embedding_select = bokeh.models.Select(
                 title="",
                 value=default_option,
-                options=[option.name for option in options])
+                options=[option.name for option in options],
+                width=400)
 
             self._aggregator = bokeh.models.Select(
                 title="",
@@ -307,24 +362,28 @@ class DocEmbedder:
             def aggregator_changed_shim(attr, old, new):
                 self.aggregator_changed()
             
-            self._embedding_select.on_change("value", embedding_changed_shim)
+            if not _display_mode.static:
+                self._embedding_select.on_change("value", embedding_changed_shim)
             self.embedding_changed()
 
-            self._aggregator.on_change("value", aggregator_changed_shim)
+            if not _display_mode.static:
+                self._aggregator.on_change("value", aggregator_changed_shim)
         else:
             self._embedding_select = widgets.Dropdown(
                 title="",
-                style={'description_width': 'initial', 'width': 'max'},
+                layout={'description_width': 'initial', 'width': 'max-content'},
                 value=default_option,
                 options=[option.name for option in options])
 
-            self._aggregator = bokeh.models.Dropdown(
+            self._aggregator = widgets.Dropdown(
                 title="",
-                style={'description_width': 'initial', 'width': 'max'},
+                layout={'description_width': 'initial', 'width': 'max-content'},
                 value=agg_options[0],
                 options=agg_options)
             
             self._embedding_select.observe(lambda changed: self.embedding_changed(), names="value")
+            self.embedding_changed()
+
             self._aggregator.observe(lambda changed: self.aggregator_changed(), names="value")
              
     @property
@@ -341,7 +400,12 @@ class DocEmbedder:
             cb()
 
     def embedding_changed(self):
-        self._aggregator.visible = self.option.token_embedding is not None
+        visible = self.option.token_embedding is not None
+        if _display_mode.bokeh:
+            self._aggregator.visible = visible
+        else:
+            self._aggregator.layout.display = 'block' if visible else 'none'
+            
         self._change_occured()
             
     def aggregator_changed(self):
@@ -778,7 +842,8 @@ class EmbeddingPlotter:
                 intruder = [intruder_select, intruder_free][active - 1].value
             for k, v in self._compute_source_data(intruder).items():
                 source[k].data = v
-            #update_token_plot()
+            if _display_mode.static:
+                update_token_plot()
 
             if not _display_mode.fully_interactive:
                 self._update_figures_html()
@@ -965,15 +1030,21 @@ def plot_doc_embeddings(embedder_factory, gold, plot_args):
             embedder_factory.create(args.get("encoder")),
             gold)
         plotters.append(plotter)
+        
+    def clean_kwargs(kwargs):
+        kwargs = kwargs.copy()
+        if "encoder" in kwargs:
+            del kwargs["encoder"]
+        return kwargs
+    
+    plot_width = default_plot_width() // len(plot_args)
 
     if _display_mode.bokeh:
         def mk_root(bokeh_doc):
             widgets = []
             for plotter, kwargs in zip(plotters, plot_args):
-                kwargs = kwargs.copy()
-                if "encoder" in kwargs:
-                    del kwargs["encoder"]
-                widgets.append(plotter.mk_plot(bokeh_doc, **kwargs))
+                widgets.append(plotter.mk_plot(
+                    bokeh_doc, plot_width=plot_width, **clean_kwargs(kwargs)))
             return bokeh.layouts.row(widgets)
 
         if _display_mode.static:
@@ -985,7 +1056,7 @@ def plot_doc_embeddings(embedder_factory, gold, plot_args):
             bokeh.io.show(add_root)
     else:
         plots = [
-            plotter.mk_plot(None, **kwargs)
+            plotter.mk_plot(None, plot_width=plot_width, **clean_kwargs(kwargs))
             for plotter, kwargs in zip(plotters, plot_args)]
         display(widgets.HBox(plots))
         for p in plotters:
@@ -1005,7 +1076,6 @@ class DocEmbeddingExplorer:
             self._gold,
             args)
 
-        
         
 class TokenSimilarityPlotter:
     def _create_data(self, doc, ref_token, embedding):        
@@ -1087,13 +1157,13 @@ class TokenSimilarityPlotter:
         self._nlp = nlp
         self._gold = gold
 
-        #self._occs = dict((x.unique_id, x) for x in gold.occurences)
+        #self._occs = dict((x.unique_id, x) for x in gold.occurrences)
         #doc_digests = sorted(gold.doc_digests(), key=lambda x: x[0])
         self._doc_id_to_doc = dict((x.unique_id, x) for x in self._session.documents)
         self._embedding_names = sorted(session.embeddings.keys(), key=lambda x: len(x))
         
         if initial_occ is None:
-            initial_occ_id = gold.occurences[0].unique_id
+            initial_occ_id = gold.occurrences[0].unique_id
         else:
             initial_occ_id = initial_occ.unique_id
         
@@ -1118,7 +1188,7 @@ class TokenSimilarityPlotter:
         else:
             self._token_text = widgets.Text(value=token)
             self._doc_select = widgets.Dropdown(
-                options=[(occ_digest(occ), occ.unique_id) for occ in gold.occurences],
+                options=[(occ_digest(occ), occ.unique_id) for occ in gold.occurrences],
                 value=initial_occ_id)
             self._token_text.observe(lambda change: self._update(), names='value')
             self._doc_select.observe(lambda change: self._update(), names='value')
@@ -1153,10 +1223,12 @@ class TokenSimilarityPlotter:
         tooltips = """
             @sim
         """
+        
+        total_width = default_plot_width()
 
         p = bokeh.plotting.figure(
             y_range=list(reversed(data["token"])),
-            plot_width=int(1000 / self._n_figures),
+            plot_width=int(total_width / self._n_figures),
             plot_height=len(data["token"]) * self._height_per_token,
             title="",
             toolbar_location=None, tools="", tooltips=tooltips)
@@ -1384,7 +1456,7 @@ class NDCGPlotter:
             text_font_size='8pt', text_align='right', text_baseline='middle', text_color='white')
         self._p.add_layout(labels)
 
-        bokeh.io.show(self._p)
+        _bokeh_show(self._p)
             
 
 def plot_ndcgs(gold, named_indices):
@@ -1448,7 +1520,7 @@ class InteractiveIndexBuilder:
         query_ui.on_changed()
         self._query_ui = query_ui
         
-        if _display_mode.static:
+        if False and _display_mode.static:
             self._displayable = IPython.core.display.HTML(f"""
                 <div style="background-color:#E0F0E0; margin-left: 2em; padding: 0.4em;">
                     {query_ui.summary_widget.value}
@@ -1563,12 +1635,15 @@ class ResultScoresPlotter:
         self._source.data = qr["data"]
         self._result_html.value = ""
         
-    def build(self, rank=None, plot_width=1200, plot_height=250):
+    def build(self, rank=None, plot_width=None, plot_height=250):
+        if plot_width is None:
+            plot_width = default_plot_width()
+        
         tooltips = """
             @tooltip
         """
 
-        if not _display_mode.static:
+        if _display_mode.fully_interactive:
             self._query_select.on_change('value', lambda attr, old, new: self.on_update())
         else:
             self._query_select.disabled = True
@@ -1584,7 +1659,7 @@ class ResultScoresPlotter:
         p.xaxis.axis_label = 'rank'
         p.yaxis.axis_label = 'NDCG'
         
-        if not _display_mode.static:
+        if _display_mode.fully_interactive:
             p.on_event(bokeh.events.Tap, self._on_tap)
         
         source = bokeh.models.ColumnDataSource(qr["data"])
@@ -1661,7 +1736,6 @@ def plot_gold(gold):
     doc_template = string.Template("""
         <div style="margin-left:2em">
             <span style="font-variant:small-caps; font-size: 14pt;">${title}</style>
-            <span style="float:right; font-size: 10pt;">query: ${phrase}</span>
             <hr>
             <div style="font-variant:normal; font-size: 10pt;">${text}</div>
         </div>
@@ -1703,9 +1777,11 @@ def plot_gold(gold):
 
     pos_arr = np.array(list(pos.values()))
     pad = 1
+    
+    plot_width = default_plot_width()
         
     plot = bokeh.models.Plot(
-        plot_width=1000, plot_height=400,
+        plot_width=plot_width, plot_height=400,
         x_range=bokeh.models.Range1d(np.min(pos_arr[:, 0]) - pad, np.max(pos_arr[:, 0]) + pad),
         y_range=bokeh.models.Range1d(np.min(pos_arr[:, 1]) - pad, np.max(pos_arr[:, 1]) + pad),
         output_backend="svg")
@@ -2024,7 +2100,7 @@ def plot_embedding_vectors(labels, vectors, palette, bg, extra_height=0, w_forma
         y_range=words,
         x_axis_type=None,
         x_range=(1 - 0.5, dims + 0.5),
-        plot_width=900,
+        plot_width=default_plot_width(),
         plot_height=30 * len(words) + 20 + extra_height,
         title="",
         toolbar_location="below",
@@ -2120,9 +2196,11 @@ class DocEmbeddingBars:
         @widgets.interact(
             pattern=widgets.Dropdown(
                 options=self._phrases,
-                value=self._phrases[find_index_by_filter(self._phrases, default_pattern)]),
-            contrast=widgets.Dropdown(
+                value=self._phrases[find_index_by_filter(self._phrases, default_pattern)],
+                layout={'width': 'max-content'}),
+            mismatch=widgets.Dropdown(
                 options=self._phrases,
-                value=self._phrases[find_index_by_filter(self._phrases, default_contrast)]))
-        def plot(pattern, contrast):
-            self.plot_doc_emb(pattern, contrast)
+                value=self._phrases[find_index_by_filter(self._phrases, default_contrast)],
+                layout={'width': 'max-content'}))
+        def plot(pattern, mismatch):
+            self.plot_doc_emb(pattern, mismatch)
