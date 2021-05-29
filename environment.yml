@@ -8,7 +8,7 @@ dependencies:
   - ipywidgets
   - widgetsnbextension
   - faiss
-  - bs4
+  - beautifulsoup4>=4.9
   - pip
   - pip:
       - vectorian>=0.8.1.dev4
@@ -21,4 +21,4 @@ dependencies:
       - networkx>=2.5.1
       - jp_proxy_widget
       - https://github.com/MartinoMensio/spacy-sentence-bert/releases/download/v0.1.2/en_paraphrase_distilroberta_base_v1-0.1.2.tar.gz#en_paraphrase_distilroberta_base_v1-0.1.2
-      
+      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
