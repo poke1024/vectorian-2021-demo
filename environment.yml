@@ -8,6 +8,7 @@ dependencies:
   - ipywidgets
   - widgetsnbextension
   - faiss
+  - bs4
   - pip
   - pip:
       - vectorian>=0.8.1.dev4
