@@ -83,6 +83,10 @@ def initialize(display_mode="auto"):
     display(HTML(f"""
         <div>Running notebook in <b>{_display_mode.name}</b> mode.</div>"""))
     
+    if _display_mode == DisplayMode.SERVER:
+        os.environ["BOKEH_ALLOW_WS_ORIGIN"] = ",".join(
+            [f"localhost:{port}" for port in range(8890, 8893)])
+    
     bokeh.io.output_notebook()
         
 
