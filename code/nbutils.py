@@ -124,14 +124,25 @@ class OccurenceFormatter:
         text = occurence.evidence.context
         quote = occurence.evidence.phrase
         try:
-            i = text.index(quote)
-            return ''.join([
-                text[:i],
-                '<span style="font-weight:bold;">',
-                text[i:i + len(quote)],
-                '</span>',
-                text[i + len(quote):]
-            ])
+            quote_parts = [s.strip() for s in quote.split("[...]")]
+            
+            i0 = 0
+            indices = []
+            for q in quote_parts:
+                i = text.index(q, i0)
+                indices.append((i, q))
+                i0 = i + len(q)
+                
+            for i, q in reversed(indices):
+                text = ''.join([
+                    text[:i],
+                    '<span style="font-weight:bold;">',
+                    text[i:i + len(q)],
+                    '</span>',
+                    text[i + len(q):]
+                ])
+                
+            return text
         except:
             return text
             
