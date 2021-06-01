@@ -1,4 +1,6 @@
-# The Vectorian Notebook – An Interactive Environment with Text Similarity Algorithms and Embeddings for the Detection of Intertextuality 
+# ABSTRACT
+
+## The Vectorian Notebook – An Interactive Environment with Text Similarity Algorithms and Embeddings for the Detection of Intertextuality
 
 *Bernhard Liebl & Manuel Burghardt, Computational Humanities Group, Leipzig University*
 
@@ -8,7 +10,7 @@ Over the years, there have been various attempts for measuring semantic similari
 
 We introduce the Vectorian as a framework that allows researchers to try out different embedding-based methods for intertextuality detection. In contrast to previous versions of the Vectorian (Liebl & Burghardt, 2020a/b) as a mere web interface with a limited set of static parameters, we now present a clean and completely redesigned API that is showcased in an interactive Jupyter notebook. In this notebook, we first use the Vectorian to build queries where we plug in static word embeddings such as FastText (Mikolov et al., 2018) and GloVe (Pennington et al., 2014). We evaluate the influence of computing similarity through alignments such as Waterman-Smith-Beyer (WSB; Waterman et al., 1976) and two variants of Word Mover’s Distance (WMD; Kusner et al., 2015). We also investigate the performance of state-of-art sentence embeddings like Siamese BERT networks (Reimers & Gurevych, 2019) for the task - both on a document level (as document embeddings) and as contextual token embeddings. Overall, we find that POS tag-weighted WSB with fastText offers highly competitive performance. Readers can upload their own data for performing search queries and try out additional vector space metrics such as p-norms or improved sqrt‐cosine similarity (Sohangir & Wang, 2017).
 
-# References
+## References
 
 Bamman, David & Crane, Gregory (2008). The logic and discovery of textual allusion. In Proceedings of the 2008 LREC Workshop on Language Technology for Cultural Heritage Data.
 
@@ -45,3 +47,38 @@ Sohangir, Sahar & Wang, Dingding (2017). Document Understanding Using Improved S
 Waterman, Michael S., Smith, Temple F. & Beyer, William A. (1976). Some biological sequence metrics. Advances in Mathematics 20(3), p. 367-387.
 
 Wieting, John, Bansal, Mohit, Gimpel, Kevin & Livescu, Karen (2016). Towards universal paraphrastic sentence embeddings. Proceedings of the 4th International Conference on Learning Representations, ICLR 2016, San Juan, Puerto Rico.
+
+# Components
+
+```
+.
++--  code
+|    gold.py: utility functions to read in gold.json data
+|    nbbutils.py: various helper code to run publication.ipynb
+|    prepare_corpus.ipynb: notebook to recreate the contents of data/processed_data/corpus from gold.json
++--  data
+|    +-- processed_data
+|    |   +-- corpus: preprocessed Vectorian document data for parts of gold.json (e.g. tokenization)
+|        +-- doc_embeddings.*: precompute Sentence-BERT embeddings for parts of gold.json
+|    +-- raw_data
+|    |   +-- gold.json: gold standard data for Shakespeare text reuse as JSON 
++--  environment.yml: Python dependencies needed to run the notebook in a conda environment
++--  installation.md: additional documentation how to run this notebook locally or via Binder
++--  miscellaneous: various images used in the notebook
+|    +-- output: static images for interactive elements, named by cell number
++--  publication.ipynb: the actual publication as notebook
++-- README.MD: this file
+```
+
+# Dependendies
+
+see `environment.yml`
+
+# Authors
+
+Bernhard Liebl, Computational Humanities Group, Leipzig University
+liebl@informatik.uni-leipzig.de
+
+Manuel Burghardt, Computational Humanities Group, Leipzig University
+burghardt@informatik.uni-leipzig.de
+OCRID: 0000-0003-1354-9089
