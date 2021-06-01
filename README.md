@@ -1,6 +1,6 @@
 # ABSTRACT
 
-## The Vectorian Notebook – An Interactive Environment with Text Similarity Algorithms and Embeddings for the Detection of Intertextuality
+## “Embed, embed! There’s knocking at the gate." - Detecting Intertextuality with the Vectorian Notebook of Embeddings
 
 *Bernhard Liebl & Manuel Burghardt, Computational Humanities Group, Leipzig University*
 
