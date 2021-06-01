@@ -76,9 +76,11 @@ see `environment.yml`
 
 # Authors
 
+```
 Bernhard Liebl, Computational Humanities Group, Leipzig University
 liebl@informatik.uni-leipzig.de
 
 Manuel Burghardt, Computational Humanities Group, Leipzig University
 burghardt@informatik.uni-leipzig.de
 OCRID: 0000-0003-1354-9089
+```
