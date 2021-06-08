@@ -12,41 +12,11 @@ We introduce the Vectorian as a framework that allows researchers to try out dif
 
 ## References
 
-Bamman, David & Crane, Gregory (2008). The logic and discovery of textual allusion. In Proceedings of the 2008 LREC Workshop on Language Technology for Cultural Heritage Data.
-
-Bär, Daniel, Zesch, Torsten & Gurevych, Iryna (2012). Text reuse detection using a composition of text similarity measures. In Proceedings of COLING 2012, p. 167–184.
-
-Büchler, Marco, Geßner, Annette, Berti, Monica & Eckart, Thomas (2013). Measuring the influence of a work by text re-use. Bulletin of the Institute of Classical Studies. Supplement, p. 63–79.
-
 Burghardt, Manuel, Meyer, Selina, Schmidtbauer, Stephanie & Molz, Johannes (2019). “The Bard meets the Doctor” – Computergestützte Identifikation intertextueller Shakespearebezüge in der Science Fiction-Serie Dr. Who. Book of Abstracts, DHd.
-
-Chandrasekaran, Dhivya & Mago, Vijay (2021). Evolution of Semantic Similarity – A Survey. ACM Computing Surveys (CSUR), 54(2), p. 1-37.
-Forstall, Christopher, Coffee, Neil, Buck, Thomas, Roache, Katherine & Jacobson, Sarah (2015). Modeling the scholars: Detecting intertextuality through enhanced word-level n-gram matching. Digital Scholarship in the Humanities, 30(4), p. 503–515.
-
-Genette, Gérard (1993). Palimpseste. Die Literatur auf zweiter Stufe. Suhrkamp.
-Kusner, Matt, Sun, Yu, Kolkin, Nicholas & Weinberger, Kilian (2015). From word embeddings to document distances. In International conference on machine learning, p. 957-966.
 
 Liebl, Bernhard & Burghardt, Manuel (2020a). „The Vectorian“ – Eine parametrisierbare Suchmaschine für intertextuelle Referenzen. Book of Abstracts, DHd 2020, Paderborn.
 
 Liebl, Bernhard & Burghardt, Manuel (2020b). “Shakespeare in The Vectorian Age” – An Evaluation of Different Word Embeddings and NLP Parameters for the Detection of Shakespeare Quotes”. Proceedings of the 4th Joint SIGHUM Workshop on Computational Linguistics for Cultural Heritage, Social Sciences, Humanities and Literature (LateCH), co-located with COLING’2020.
-
-Manjavacas, Enrique, Long, Brian & Kestemont, Mike (2019). On the feasibility of automated detection of allusive text reuse. Proceedings of the 3rd Joint SIGHUM Workshop on Computational Linguistics for Cultural Heritage, Social Sciences, Humanities and Literature.
-
-Mikolov, Tomas, Chen, Kai, Corrado, Greg & Dean, Jeffrey (2013). Efficient estimation of word representations in vector space. In Proceedings of International Conference on Learning Representations (ICLR 2013). arXiv preprint arXiv:1301.3781.
-
-Mikolov, Tomas, Grave, Edouard, Bojanowski, Piotr, Puhrsch, Christian & Joulin, Armand (2018). Advances in pretraining distributed word representations. In Proceedings of the Eleventh International Conference on Language Resources and Evaluation (LREC 2018). arXiv preprint arXiv:1712.09405.
-
-Pennington, Jeffrey, Socher, Richard & Manning, Christopher D. (2014). Glove: Global vectors for word representation. In Proceedings of the 2014 conference on empirical methods in natural language processing (EMNLP), p. 1532-1543.
-
-Reimers, Nils & Gurevych, Iryna (2019). Sentence-BERT: Sentence Embeddings Using Siamese BERT-Networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP).
-
-Scheirer, Walter, Forstall, Christopher & Coffee, Neil (2014). The sense of a connection: Automatic tracing of intertextuality by meaning. Digital Scholarship in the Humanities, 31(1), p. 204–217.
-
-Sohangir, Sahar & Wang, Dingding (2017). Document Understanding Using Improved Sqrt-Cosine Similarity. In Proceedings of the 2017 IEEE 11th International Conference on Semantic Computing (ICSC), p. 278-279.
-
-Waterman, Michael S., Smith, Temple F. & Beyer, William A. (1976). Some biological sequence metrics. Advances in Mathematics 20(3), p. 367-387.
-
-Wieting, John, Bansal, Mohit, Gimpel, Kevin & Livescu, Karen (2016). Towards universal paraphrastic sentence embeddings. Proceedings of the 4th International Conference on Learning Representations, ICLR 2016, San Juan, Puerto Rico.
 
 # Components
 
@@ -70,17 +40,26 @@ Wieting, John, Bansal, Mohit, Gimpel, Kevin & Livescu, Karen (2016). Towards uni
 +-- README.MD: this file
 ```
 
-# Dependendies
+# Configuration
 
-see `environment.yml`
+You need a Jupyter environment with Python >= 3.7 and various Python packages such as spaCy (for
+parsing text) and vectorian (for searching text). We recommend creating a `conda` environment
+through the `environment.yml` in this repository (which contains all needed dependencies). To
+run the notebook locally in this way, do this:
+
+```
+cd /path/to/vectorian/repository
+conda env create -f environment.yml
+conda activate vectorian-jupyter
+jupyter notebook publication.iypnb
+
+```
 
 # Authors
 
-```
 Bernhard Liebl, Computational Humanities Group, Leipzig University
 liebl@informatik.uni-leipzig.de
 
 Manuel Burghardt, Computational Humanities Group, Leipzig University
 burghardt@informatik.uni-leipzig.de
 OCRID: 0000-0003-1354-9089
-```

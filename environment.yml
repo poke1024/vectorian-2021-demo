@@ -1,4 +1,4 @@
-name: vectorian-demo
+name: vectorian-jupyter
 channels:
   - default
   - conda-forge
