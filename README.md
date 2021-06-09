@@ -44,7 +44,6 @@ cd /path/to/vectorian/repository
 conda env create -f environment.yml
 conda activate vectorian-jupyter
 jupyter notebook publication.iypnb
-
 ```
 
 # Authors
