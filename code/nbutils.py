@@ -19,6 +19,9 @@ import openTSNE.callbacks
 import networkx as nx
 import IPython.core.display
 import xml.etree.ElementTree as ET
+import zipfile
+import io
+import requests
 
 import bokeh.plotting
 import bokeh.models
@@ -40,7 +43,7 @@ if os.environ.get("VECTORIAN_DEV"):
     sys.path.append(str(vectorian_path))
     import vectorian
 
-from vectorian.embeddings import TokenEmbeddingAggregator, prepare_docs
+from vectorian.embeddings import Word2VecVectors, TokenEmbeddingAggregator, prepare_docs
 from vectorian.embeddings import CachedPartitionEncoder
 from vectorian.index import DummyIndex
 from vectorian.metrics import TokenSimilarity, CosineSimilarity
@@ -114,6 +117,28 @@ def make_nlp():
     nlp.add_pipe('sentence_bert', config={'model_name': 'en_paraphrase_distilroberta_base_v1'})
     nlp.meta["name"] = "core_web_sm_AND_en_paraphrase_distilroberta_base_v1"
     return nlp
+
+
+def download_word2vec_embedding(name, url):
+    data_path = Path(f"{name}.zip")
+    if not data_path.exists():
+        resp = requests.get(url)
+        with open(data_path, "wb") as f:
+            f.write(resp.content)
+
+    with zipfile.ZipFile(data_path, 'r') as zf:
+        for zi in zf.infolist():
+            if zi.filename[-1] == '/':
+                continue
+
+            data = zf.read(zi)
+
+            return Word2VecVectors(
+                name,
+                io.BytesIO(data),
+                binary=True)
+
+    raise ValueError("zip file is empty")
 
 
 def occ_digest(occ, n=80):
