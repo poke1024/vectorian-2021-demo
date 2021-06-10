@@ -38,6 +38,8 @@ from tqdm.autonotebook import tqdm
 from pathlib import Path
 from contextlib import contextmanager
 
+os.environ["VECTORIAN_CACHE_HOME"] = "data/raw_data/vectorian_cache"
+
 if os.environ.get("VECTORIAN_DEV"):
     os.environ["VECTORIAN_CPP_IMPORT"] = "1"
     vectorian_path = Path("/Users/arbeit/Projects/vectorian-2021")
@@ -125,25 +127,13 @@ def monkey_patch_sentence_transformers_tqdm(desc):
         sentence_transformers.util.tqdm = old_tqdm
 
 
-
-def make_nlp():
-    # uses 'tagger' from en_core_web_sm
-    # we include 'parser' so that Vectorian can detect sentence boundaries
-
-    with monkey_patch_sentence_transformers_tqdm("downloading Sentence BERT model"):
-        nlp = spacy.load('en_core_web_sm', exclude=['ner'])
-        nlp.add_pipe('sentence_bert', config={'model_name': 'en_paraphrase_distilroberta_base_v1'})
-        nlp.meta["name"] = "core_web_sm_AND_en_paraphrase_distilroberta_base_v1"
-        return nlp
-
-
 # the following function is adapted from:
 # https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
 def download(url: str, fname: str):
     resp = requests.get(url, stream=True)
     total = int(resp.headers.get('content-length', 0))
     with open(fname, 'wb') as file, tqdm(
-            desc=url,
+            desc=f"Downloading {url}",
             total=total,
             unit='iB',
             unit_scale=True,
@@ -172,6 +162,30 @@ def download_word2vec_embedding(name, url):
                 binary=True)
 
     raise ValueError("zip file is empty")
+
+
+def make_nlp(sbert_model_name):
+    # uses 'tagger' from en_core_web_sm
+    # we include 'parser' so that Vectorian can detect sentence boundaries
+
+    sbert_cache_path = Path("data/raw_data/sentence_transformers")
+    os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(sbert_cache_path)
+    sbert_model_path = sbert_cache_path / "sbert.net_models_paraphrase-distilroberta-base-v1"
+    sbert_model_zip_path = sbert_model_path.parent / (sbert_model_path.name + ".zip")
+
+    if not sbert_model_zip_path.exists():
+        download(
+            "https://zenodo.org/record/4923260/files/sbert.net_models_paraphrase-distilroberta-base-v1.zip",
+            sbert_model_zip_path)
+    if not sbert_model_path.is_dir():
+        with zipfile.ZipFile(sbert_model_zip_path, "r") as zf:
+            zf.extractall(sbert_model_path.parent)
+
+    with monkey_patch_sentence_transformers_tqdm("Downloading Sentence BERT model"):
+        nlp = spacy.load('en_core_web_sm', exclude=['ner'])
+        nlp.add_pipe('sentence_bert', config={'model_name': sbert_model_name})
+        nlp.meta["name"] = "core_web_sm_AND_" + sbert_model_name
+        return nlp
 
 
 def occ_digest(occ, n=80):

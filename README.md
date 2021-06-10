@@ -25,6 +25,8 @@ We introduce the Vectorian as a framework that allows researchers to try out dif
 |    |   +-- sbert_contextual: precomputed Sentence-BERT contextual token embeddings for pattern phrases
 |    +-- raw_data
 |    |   +-- gold.json: gold standard data for Shakespeare text reuse as JSON 
+|    |   +-- sentence_transformers: will contain S-BERT model (downloaded in the notebook)
+|    |   +-- vectorian_cache: will contain word embedding data (downloaded in the notebook)
 +--  environment.yml: Python dependencies needed to run the notebook in a conda environment
 +--  installation.md: additional documentation how to run this notebook locally or via Binder
 +--  miscellaneous: various images used in the notebook
