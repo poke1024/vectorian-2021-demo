@@ -34,8 +34,9 @@ from functools import partial
 from cached_property import cached_property
 from IPython.core.display import HTML, display
 from bs4 import BeautifulSoup
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from pathlib import Path
+from contextlib import contextmanager
 
 if os.environ.get("VECTORIAN_DEV"):
     os.environ["VECTORIAN_CPP_IMPORT"] = "1"
@@ -109,22 +110,54 @@ def make_limited_function_warning_widget(action_text):
         layout=widgets.Layout(border='solid 1px #F9E79F'))
 
 
+@contextmanager
+def monkey_patch_sentence_transformers_tqdm(desc):
+    # patch progress so we know that it's actually sentence_transformers we are seeing,
+    # since sentence_transformers does not set "desc" on its tqdm instance :-/
+    from functools import partial
+    import sentence_transformers.util
+
+    old_tqdm = sentence_transformers.util.tqdm
+    sentence_transformers.util.tqdm = partial(tqdm, desc=desc)
+    try:
+        yield
+    finally:
+        sentence_transformers.util.tqdm = old_tqdm
+
+
+
 def make_nlp():
     # uses 'tagger' from en_core_web_sm
     # we include 'parser' so that Vectorian can detect sentence boundaries
 
-    nlp = spacy.load('en_core_web_sm', exclude=['ner'])
-    nlp.add_pipe('sentence_bert', config={'model_name': 'en_paraphrase_distilroberta_base_v1'})
-    nlp.meta["name"] = "core_web_sm_AND_en_paraphrase_distilroberta_base_v1"
-    return nlp
+    with monkey_patch_sentence_transformers_tqdm("downloading Sentence BERT model"):
+        nlp = spacy.load('en_core_web_sm', exclude=['ner'])
+        nlp.add_pipe('sentence_bert', config={'model_name': 'en_paraphrase_distilroberta_base_v1'})
+        nlp.meta["name"] = "core_web_sm_AND_en_paraphrase_distilroberta_base_v1"
+        return nlp
+
+
+# the following function is adapted from:
+# https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
+def download(url: str, fname: str):
+    resp = requests.get(url, stream=True)
+    total = int(resp.headers.get('content-length', 0))
+    with open(fname, 'wb') as file, tqdm(
+            desc=url,
+            total=total,
+            unit='iB',
+            unit_scale=True,
+            unit_divisor=1024,
+    ) as bar:
+        for data in resp.iter_content(chunk_size=1024):
+            size = file.write(data)
+            bar.update(size)
 
 
 def download_word2vec_embedding(name, url):
     data_path = Path(f"{name}.zip")
     if not data_path.exists():
-        resp = requests.get(url)
-        with open(data_path, "wb") as f:
-            f.write(resp.content)
+        download(url, data_path)
 
     with zipfile.ZipFile(data_path, 'r') as zf:
         for zi in zf.infolist():
