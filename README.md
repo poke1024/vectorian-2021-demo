@@ -21,7 +21,8 @@ We introduce the Vectorian as a framework that allows researchers to try out dif
 +--  data
 |    +-- processed_data
 |    |   +-- corpus: preprocessed Vectorian document data for parts of gold.json (e.g. tokenization)
-|        +-- doc_embeddings.*: precompute Sentence-BERT embeddings for parts of gold.json
+|    |   +-- doc_embeddings.*: precomputed Sentence-BERT document embeddings for parts of gold.json
+|    |   +-- sbert_contextual: precomputed Sentence-BERT contextual token embeddings
 |    +-- raw_data
 |    |   +-- gold.json: gold standard data for Shakespeare text reuse as JSON 
 +--  environment.yml: Python dependencies needed to run the notebook in a conda environment
