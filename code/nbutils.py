@@ -39,6 +39,10 @@ from pathlib import Path
 from contextlib import contextmanager
 
 os.environ["VECTORIAN_CACHE_HOME"] = "data/raw_data/vectorian_cache"
+os.environ["GENSIM_DATA_DIR"] = "data/raw_data/gensim_data"
+
+sbert_cache_path = Path("data/raw_data/sentence_transformers")
+os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(sbert_cache_path)
 
 if os.environ.get("VECTORIAN_DEV"):
     os.environ["VECTORIAN_CPP_IMPORT"] = "1"
@@ -168,8 +172,6 @@ def make_nlp(sbert_model_name):
     # uses 'tagger' from en_core_web_sm
     # we include 'parser' so that Vectorian can detect sentence boundaries
 
-    sbert_cache_path = Path("data/raw_data/sentence_transformers")
-    os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(sbert_cache_path)
     sbert_model_path = sbert_cache_path / "sbert.net_models_paraphrase-distilroberta-base-v1"
     sbert_model_zip_path = sbert_model_path.parent / (sbert_model_path.name + ".zip")
 
