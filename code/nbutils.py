@@ -1044,6 +1044,12 @@ class EmbeddingPlotter:
                 update_token_plot()
                 
         if locator is not None:
+            def set_active_query_tab(active):
+                if _display_mode.bokeh:
+                    query_tabs.active = active
+                else:
+                    query_tabs.selected_index = active
+
             if isinstance(locator, str):
                 locator = ("free", locator)
             locator_type, locator_s = locator
@@ -1051,10 +1057,10 @@ class EmbeddingPlotter:
                 phrases = [p.phrase for p in self._gold.patterns]
                 intruder_select.value = phrases[find_index_by_filter(
                     phrases, locator_s)]
-                query_tabs.active = 1
+                set_active_query_tab(1)
             elif locator_type == "free":
                 intruder_free.value = locator_s
-                query_tabs.active = 2
+                set_active_query_tab(2)
             else:
                 raise ValueError(locator_type)
                 
