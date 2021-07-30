@@ -11,7 +11,7 @@ dependencies:
   - beautifulsoup4==4.9
   - pip
   - pip:
-      - vectorian==0.8.4
+      - vectorian==0.9
       - sentence-transformers==0.4
       - jupyter_bokeh==3.0.0
       - opentsne==0.6.0
