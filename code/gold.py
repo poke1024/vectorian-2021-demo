@@ -1,5 +1,6 @@
 import json
 from collections import namedtuple
+from cached_property import cached_property
 
 
 Source = namedtuple("Source", ["work", "author"])
@@ -28,15 +29,15 @@ Evidence = namedtuple("Text", ["context", "phrase"])
     
 
 class Occurrence:
-    def __init__(self, unique_id, evidence, source):
-        self._unique_id = unique_id
+    def __init__(self, gold_id, evidence, source):
+        self._gold_id = gold_id
         self._evidence = evidence
         self._source = source
         self._pattern = None
         
-    @property
-    def unique_id(self):
-        return self._unique_id
+    @cached_property
+    def metadata(self):
+        return {'gold_id': self._gold_id}
 
     @property
     def evidence(self):

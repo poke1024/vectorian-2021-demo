@@ -2,16 +2,17 @@ name: vectorian-jupyter
 channels:
   - default
   - conda-forge
+  - pytorch
 dependencies:
   - python=3.7
   - bokeh==2.3.1
   - ipywidgets
   - widgetsnbextension
-  - faiss==1.7.0
+  - faiss-cpu
   - beautifulsoup4==4.9
   - pip
   - pip:
-      - vectorian>=0.9.4
+      - vectorian>=0.9.5
       - sentence-transformers==0.4
       - jupyter_bokeh==3.0.0
       - opentsne==0.6.0

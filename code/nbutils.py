@@ -38,10 +38,14 @@ from tqdm.autonotebook import tqdm
 from pathlib import Path
 from contextlib import contextmanager
 
-os.environ["VECTORIAN_CACHE_HOME"] = "data/raw_data/vectorian_cache"
-os.environ["GENSIM_DATA_DIR"] = "data/raw_data/gensim_data"
+data_path = Path(os.environ.get("VECTORIAN_DEMO_DATA_PATH", "data")).absolute()
+if not data_path.is_dir():
+    raise FileNotFoundError(f"cannot find notebook data path at {data_path}")
 
-sbert_cache_path = Path("data/raw_data/sentence_transformers")
+os.environ["VECTORIAN_CACHE_HOME"] = f"{data_path}/raw_data/vectorian_cache"
+os.environ["GENSIM_DATA_DIR"] = f"{data_path}/raw_data/gensim_data"
+
+sbert_cache_path = data_path / "raw_data" / "sentence_transformers"
 os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(sbert_cache_path)
 
 if os.environ.get("VECTORIAN_DEV"):
@@ -224,11 +228,15 @@ class OccurenceFormatter:
         except:
             return text
             
+            
+def get_gold_id(x):
+    return x.metadata["gold_id"]
+            
     
 class DocFormatter:
     def __init__(self, gold):
         self._gold = gold
-        self._occ_by_id = dict((x.unique_id, x) for x in gold.occurrences)
+        self._occ_by_id = dict((get_gold_id(x), x) for x in gold.occurrences)
         
         self._fmt = OccurenceFormatter()
         self._template = string.Template("""
@@ -242,11 +250,11 @@ class DocFormatter:
        
     def format_occurrence(self, doc):
         return self._fmt.format_occurrence(
-            self._occ_by_id[doc.unique_id])
+            self._occ_by_id[get_gold_id(doc)])
         
     def format_doc(self, doc):
         return self._template.substitute(
-            phrase=self._occ_by_id[doc.unique_id].pattern.phrase,
+            phrase=self._occ_by_id[get_gold_id(doc)].pattern.phrase,
             title=doc.metadata["title"],
             text=self.format_occurrence(doc))
 
@@ -355,7 +363,7 @@ class Browser:
                 occurrences = gold.patterns[pattern_select.value].occurrences
                 works = query_contexts()
                 i = context_select.value
-                context_display.value = formatter.format_occurrence(occurrences[i]) + f' <span style="float:right;"><i>{occurrences[i].unique_id}</i></span>'
+                context_display.value = formatter.format_occurrence(occurrences[i]) + f' <span style="float:right;"><i>{get_gold_id(occurrences[i])}</i></span>'
 
             pattern_select.observe(on_phrase_change)
             context_select.observe(on_context_change)
@@ -553,7 +561,7 @@ class EmbeddingPlotter:
 
         self._current_selection = None
 
-        self._id_to_doc = dict((doc.unique_id, doc) for doc in self.session.documents)
+        self._id_to_doc = dict((get_gold_id(doc), doc) for doc in self.session.documents)
         self._doc_formatter = DocFormatter(gold)
         
         DocData = collections.namedtuple("DocData", ["doc", "query", "work"])
@@ -562,7 +570,7 @@ class EmbeddingPlotter:
         for pattern in self._gold.patterns:
             for occ in pattern.occurrences:
                 docs.append(DocData(
-                    doc=self._id_to_doc[occ.unique_id],
+                    doc=self._id_to_doc[get_gold_id(occ)],
                     query=pattern.phrase,
                     work=occ.source.work))
         self._docs = docs
@@ -639,7 +647,7 @@ class EmbeddingPlotter:
         contexts.append("")
 
         for occ in self._gold.occurrences:
-            doc = id_to_doc[occ.unique_id]
+            doc = id_to_doc[get_gold_id(occ)]
             query_docs.append(doc)
             works.append(occ.source.work)
             phrases.append(occ.pattern.phrase)
@@ -834,7 +842,7 @@ class EmbeddingPlotter:
                         
         def update_token_plot(max_token_count=750):
             selected = source['docs'].selected.indices
-            self._current_selection = [self._docs[i].doc.unique_id for i in selected]
+            self._current_selection = [get_gold_id(self._docs[i].doc) for i in selected]
  
             if tok_emb_p is None:
                 return
@@ -940,7 +948,7 @@ class EmbeddingPlotter:
         def encoder_changed():
             update_document_embedding_plot()
             if selection:
-                id_to_index = dict((doc_data.doc.unique_id, i) for i, doc_data in enumerate(self._docs))
+                id_to_index = dict((get_gold_id(doc_data.doc), i) for i, doc_data in enumerate(self._docs))
                 source['docs'].selected.indices = [id_to_index[x] for x in selection]
             
         def clear_token_plot():
@@ -1034,7 +1042,7 @@ class EmbeddingPlotter:
             """))
             
         if selection:
-            id_to_index = dict((doc_data.doc.unique_id, i) for i, doc_data in enumerate(self._docs))
+            id_to_index = dict((get_gold_id(doc_data.doc), i) for i, doc_data in enumerate(self._docs))
             source['docs'].selected.indices = [id_to_index[x] for x in selection]
             
             if not _display_mode.fully_interactive:
@@ -1252,15 +1260,13 @@ class TokenSimilarityPlotter:
         self._nlp = nlp
         self._gold = gold
 
-        #self._occs = dict((x.unique_id, x) for x in gold.occurrences)
-        #doc_digests = sorted(gold.doc_digests(), key=lambda x: x[0])
-        self._doc_id_to_doc = dict((x.unique_id, x) for x in self._session.documents)
+        self._doc_id_to_doc = dict((get_gold_id(x), x) for x in self._session.documents)
         self._embedding_names = sorted(session.embeddings.keys(), key=lambda x: len(x))
         
         if initial_occ is None:
-            initial_occ_id = gold.occurrences[0].unique_id
+            initial_occ_id = get_gold_id(gold.occurrences[0])
         else:
-            initial_occ_id = initial_occ.unique_id
+            initial_occ_id = get_gold_id(initial_occ)
         
         self._figures = None
         self._n_figures = min(n_figures, len(session.embeddings))
@@ -1270,7 +1276,7 @@ class TokenSimilarityPlotter:
         if _display_mode.bokeh:
             self._token_text = bokeh.models.TextInput(value=token)
             self._doc_select = bokeh.models.Select(
-                options=[(occ.unique_id, occ_digest(occ)) for occ in gold.occurrences], value=initial_occ_id)
+                options=[(get_gold_id(occ), occ_digest(occ)) for occ in gold.occurrences], value=initial_occ_id)
             #self._top_n = bokeh.models.Slider(start=5, end=100, step=5, value=15, title="top n")
 
             if _display_mode.static:
@@ -1283,7 +1289,7 @@ class TokenSimilarityPlotter:
         else:
             self._token_text = widgets.Text(value=token)
             self._doc_select = widgets.Dropdown(
-                options=[(occ_digest(occ), occ.unique_id) for occ in gold.occurrences],
+                options=[(occ_digest(occ), get_gold_id(occ)) for occ in gold.occurrences],
                 value=initial_occ_id)
             self._token_text.observe(lambda change: self._update(), names='value')
             self._doc_select.observe(lambda change: self._update(), names='value')
@@ -1429,13 +1435,13 @@ class NDCGComputer:
         
         to_index = {}
         for occ in self._gold.occurrences:
-            to_index[occ.unique_id] = len(to_index)
+            to_index[get_gold_id(occ)] = len(to_index)
         self._to_index = to_index
         self._num_docs = len(to_index)
 
     def from_matches(self, matches, pattern):
-        recommended = [m.doc.unique_id for m in matches]
-        relevant = [x.unique_id for x in pattern.occurrences]
+        recommended = [get_gold_id(m.doc) for m in matches]
+        relevant = [get_gold_id(x) for x in pattern.occurrences]
         return ndcg(recommended, relevant, len(recommended))
     
     def from_index(self, index, pattern):
@@ -1681,14 +1687,14 @@ class ResultScoresPlotter:
         phrases = [p.phrase for p in self._gold.patterns]
         pattern = self._gold.patterns[phrases.index(self._query_select.value)]
         n = len(self._gold.occurrences)
-        gold_matches = [x.unique_id for x in pattern.occurrences]
+        gold_matches = [get_gold_id(x) for x in pattern.occurrences]
         result = self._index.find(pattern.phrase, n=n, disable_progress=True)
         self._result = result
             
         ndcg = self._ndcg.from_matches(result.matches, pattern)
         title = ""  #f"Scores for Query '{query['phrase']}', NDCG={ndcg * 100:.1f}%"            
             
-        base_hue = [0.8 if m.doc.unique_id in gold_matches else 0.2 for m in result.matches]
+        base_hue = [0.8 if get_gold_id(m.doc) in gold_matches else 0.2 for m in result.matches]
             
         return {
             'title': title,
@@ -1846,15 +1852,15 @@ def plot_gold(gold):
         context[pattern.phrase] = ""
 
         for occ in pattern.occurrences:
-            phrase[occ.unique_id] = ""  # phrase_html + "<hr>"
-            context[occ.unique_id] = doc_template.substitute(
+            phrase[get_gold_id(occ)] = ""  # phrase_html + "<hr>"
+            context[get_gold_id(occ)] = doc_template.substitute(
                 title=occ.source.work,
                 phrase=occ.evidence.phrase,
                 text=formatter.format_occurrence(occ))
 
-            G.add_edge(pattern.phrase, occ.unique_id)
-            color[occ.unique_id] = palette[1]
-            subset[occ.unique_id] = i
+            G.add_edge(pattern.phrase, get_gold_id(occ))
+            color[get_gold_id(occ)] = palette[1]
+            subset[get_gold_id(occ)] = i
 
     nx.set_node_attributes(G, color, "node_color")
     nx.set_node_attributes(G, subset, "subset")
@@ -2260,7 +2266,7 @@ class DocEmbeddingBars:
         self._embedder = embedder
         self._gold_data = gold_data
         
-        self._id_to_doc = dict((doc.unique_id, doc) for doc in session.documents)
+        self._id_to_doc = dict((get_gold_id(doc), doc) for doc in session.documents)
         self._phrases = [x.phrase for x in gold_data.patterns]
     
     def plot_doc_emb(self, match_pattern, mismatch_pattern):
@@ -2273,11 +2279,11 @@ class DocEmbeddingBars:
         items["pattern"] = self._embedder.mk_query(self._gold_data.patterns[match_i].phrase)
         for i, x in enumerate(self._gold_data.patterns[match_i].occurrences):
             name = f"match {i + 1}"
-            items[name] = self._id_to_doc[x.unique_id]
+            items[name] = self._id_to_doc[get_gold_id(x)]
             doc_names.append(name)
         for i, x in enumerate(self._gold_data.patterns[mismatch_i].occurrences):
             name = f"mismatch {i + 1}"
-            items[name] = self._id_to_doc[x.unique_id]
+            items[name] = self._id_to_doc[get_gold_id(x)]
             doc_names.append(name)
 
         pairs = []
