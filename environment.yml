@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - pytorch
 dependencies:
-  - python=3.7
+  - python=3.8
   - bokeh==2.3.1
   - ipywidgets
   - widgetsnbextension
@@ -13,12 +13,13 @@ dependencies:
   - pip
   - pip:
       - vectorian>=0.9.5
+      - pybind11==2.6.2
       - sentence-transformers==0.4
       - jupyter_bokeh==3.0.0
       - opentsne==0.6.0
-      - spacy==3.0.6
+      - spacy==3.1.2
       - spacy_sentence_bert==0.1.2
       - markdown==3.3.4
       - networkx==2.5.1
       - jp_proxy_widget==1.0.10
-      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0-py3-none-any.whl
