@@ -81,7 +81,7 @@ def default_plot_width():
     if _display_mode.static:
         return 600
     else:
-        return 1000
+        return 800
 
     
 def running_inside_binder():
@@ -95,7 +95,7 @@ def initialize(display_mode="auto"):
     else:
         _display_mode = DisplayMode[display_mode.upper()]
     display(HTML(f"""
-        <div>Running notebook in <b>{_display_mode.name}</b> mode.</div>"""))
+        <div style="font-size: small;">Running notebook in <b>{_display_mode.name}</b> mode.</div>"""))
     
     if _display_mode == DisplayMode.SERVER:
         os.environ["BOKEH_ALLOW_WS_ORIGIN"] = ",".join(
@@ -1886,6 +1886,8 @@ def plot_gold(gold):
         x_range=bokeh.models.Range1d(np.min(pos_arr[:, 0]) - pad, np.max(pos_arr[:, 0]) + pad),
         y_range=bokeh.models.Range1d(np.min(pos_arr[:, 1]) - pad, np.max(pos_arr[:, 1]) + pad),
         output_backend="svg")
+    
+    plot.toolbar.logo = None
     
     node_hover_tool = bokeh.models.HoverTool(
         tooltips="""
