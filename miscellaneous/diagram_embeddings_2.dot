@@ -1,0 +1,25 @@
+digraph my_graph {
+    rankdir=LR;
+    graph[ranksep=0.5,nodesep=.2 ,margin=0.3,bgcolor=Transparent];
+    node[fontname=Arial, fontsize=10];
+    edge[fontname=Arial, fontsize=10];
+
+    token_embeddings [label="Token Embeddings", color="transparent", shape="rectangle"];
+    contextual [label="Contextual Embeddings", color="transparent", shape="rectangle"];
+    static [label="Static Embeddings", color="transparent", shape="rectangle"];
+    glove [label="GloVe", color="transparent", shape="rectangle"];
+    fasttext [label="fastText", color="transparent", shape="rectangle"];
+    numberbatch [label="Numberbatch", color="transparent", shape="rectangle"];
+    stacked [label="stacked", color="transparent", shape="rectangle"];
+    sbert [label=<Sentence-BERT<br/><I>on token level</I>>, color="transparent", shape="rectangle"]
+   
+    token_embeddings -> contextual [dir="forward"];
+    token_embeddings -> static [dir="forward"];
+    static -> glove [dir="forward", color="orange"];
+    static -> fasttext [dir="forward", color="orange"];
+    static -> numberbatch [dir="forward", color="orange"];
+    static -> stacked [dir="forward", color="orange"];
+    stacked -> fasttext [dir="forward", color="lightblue"];
+    stacked -> numberbatch [dir="forward", color="lightblue"];
+    contextual -> sbert [dir="forward", color="orange"];
+}

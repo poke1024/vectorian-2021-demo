@@ -2305,3 +2305,15 @@ class DocEmbeddingBars:
                 layout={'width': 'max-content'}))
         def plot(pattern, mismatch):
             self.plot_doc_emb(pattern, mismatch)
+
+            
+def plot_dot(dot_path):
+    import pydot
+
+    with open(dot_path, "r") as f:
+        graphs = pydot.graph_from_dot_data(f.read())
+    graph = graphs[0]
+
+    from IPython.display import SVG
+
+    return SVG(graph.create_svg())

@@ -1,0 +1,21 @@
+digraph my_graph {
+    rankdir=LR;
+    graph[ranksep=0.5,nodesep=.2 ,margin=0.3,bgcolor=Transparent];
+    node[fontname=Arial, fontsize=10];
+    edge[fontname=Arial, fontsize=10];
+
+    {rank=same; document_embeddings; token_embeddings }
+    embeddings [label="Embeddings", shape="rectangle", color="transparent"];
+    document_embeddings [label="Document Embeddings", color="transparent", shape="rectangle", style="none", fillcolor="azure1"];
+    token_embeddings [label="Token Embeddings", color="transparent", shape="rectangle", style="none", fillcolor="orange"];
+    ded_models [label="From Dedicated Models", color="transparent", shape="rectangle", style="none", fillcolor="azure2"]
+    from_token [label="From Token Embeddings", color="transparent", shape="rectangle", style="none", fillcolor="orange3"]
+    sbert [label=<Sentence-BERT<br/><I>on document level</I>>, color="transparent", shape="ellipse", style="none", fillcolor="azure3"]
+
+    embeddings -> document_embeddings [dir="forward"];
+    embeddings -> token_embeddings [dir="forward"];
+    from_token -> token_embeddings [dir="forward", color="gray", label="e.g. averaging", style="dashed"];
+    document_embeddings -> from_token [dir="forward"];
+    document_embeddings -> ded_models [dir="forward"];
+    ded_models -> sbert [dir="forward", color="orange"];
+}
