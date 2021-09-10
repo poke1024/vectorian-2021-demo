@@ -10,7 +10,10 @@ digraph my_graph {
     token_embeddings [label="Token Embeddings", color="transparent", shape="rectangle", style="none", fillcolor="orange"];
     ded_models [label="From Dedicated Models", color="transparent", shape="rectangle", style="none", fillcolor="azure2"]
     from_token [label="From Token Embeddings", color="transparent", shape="rectangle", style="none", fillcolor="orange3"]
-    sbert [label=<Sentence-BERT<br/><I>on document level</I>>, color="transparent", shape="ellipse", style="none", fillcolor="azure3"]
+    sbert [label=<Sentence-BERT<br/><I>on document level</I>>, shape="box3d", style="none", fillcolor="azure3"]
+
+    contextual [label="Contextual Embeddings", color="transparent", shape="rectangle"];
+    static [label="Static Embeddings", color="transparent", shape="rectangle"];
 
     embeddings -> document_embeddings [dir="forward"];
     embeddings -> token_embeddings [dir="forward"];
@@ -18,4 +21,7 @@ digraph my_graph {
     document_embeddings -> from_token [dir="forward"];
     document_embeddings -> ded_models [dir="forward"];
     ded_models -> sbert [dir="forward", color="orange"];
+    
+    token_embeddings -> contextual;
+    token_embeddings -> static;
 }

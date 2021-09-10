@@ -7,11 +7,11 @@ digraph my_graph {
     token_embeddings [label="Token Embeddings", color="transparent", shape="rectangle"];
     contextual [label="Contextual Embeddings", color="transparent", shape="rectangle"];
     static [label="Static Embeddings", color="transparent", shape="rectangle"];
-    glove [label="GloVe", color="transparent", shape="rectangle"];
-    fasttext [label="fastText", color="transparent", shape="rectangle"];
-    numberbatch [label="Numberbatch", color="transparent", shape="rectangle"];
-    stacked [label="stacked", color="transparent", shape="rectangle"];
-    sbert [label=<Sentence-BERT<br/><I>on token level</I>>, color="transparent", shape="rectangle"]
+    glove [label="GloVe", shape="box3d"];
+    fasttext [label="fastText", shape="box3d"];
+    numberbatch [label="Numberbatch", shape="box3d"];
+    stacked [label="stacked", shape="cds"];
+    sbert [label=<Sentence-BERT<br/><I>on token level</I>>,shape="box3d"]
    
     token_embeddings -> contextual [dir="forward"];
     token_embeddings -> static [dir="forward"];
