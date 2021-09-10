@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import io
 import requests
+import codecs
 
 import bokeh.plotting
 import bokeh.models
@@ -59,6 +60,8 @@ from vectorian.embeddings import CachedPartitionEncoder
 from vectorian.index import DummyIndex
 from vectorian.metrics import TokenSimilarity, CosineSimilarity
 from vectorian.interact import PartitionMetricWidget
+from vectorian.importers import TextImporter
+from vectorian.session import LabSession
 
 
 class DisplayMode(enum.Enum):
@@ -2324,3 +2327,51 @@ def plot_dot(dot_path):
     from IPython.display import SVG
 
     return SVG(graph.create_svg())
+
+
+class CustomSearch:
+    def __init__(self, embeddings):
+        self._embeddings = embeddings
+        self._upload = widgets.FileUpload(
+            description="Add Corpus Text Files",
+            accept=".txt",
+            multiple=True,
+            layout=widgets.Layout(width='50%'))
+        self._upload.observe(self.on_upload_changed, names='_counter')
+        self._session = None
+
+    def _ipython_display_(self):
+        display(self._upload)
+        
+    def on_upload_changed(self, _):
+        self._session = None
+
+    def interact(self, nlp):
+        if self._session is None:
+            upload = self._upload
+
+            if not upload.value:
+                display(HTML("<strong>cannot run on empty upload. please provide at least one text file.</strong>"))
+                return None
+
+            im = TextImporter(nlp)
+
+            from vectorian.corpus import Corpus
+            import tempfile
+            corpus = Corpus(tempfile.mkdtemp(prefix="temp_corpus_", dir="data/processed_data/temp_corpus"))
+
+            # for each uploaded file, import it via importer "im" and add to corpus
+            for k, data in upload.value.items():
+                corpus.add_doc(
+                    im(codecs.decode(data["content"], encoding="utf-8"), title=k)
+                )
+
+            self._session = LabSession(
+                corpus,
+                self._embeddings
+            )
+            
+            display(widgets.VBox(layout=widgets.Layout(height="3em")))
+        
+        return self._session.interact(nlp)
+
