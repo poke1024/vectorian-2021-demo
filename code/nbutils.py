@@ -1825,7 +1825,8 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
 def plot_gold(gold):
     G = nx.Graph()
 
-    color = {}
+    node_color = {}
+    node_size = {}
     subset = {}
     
     phrase = {}
@@ -1844,7 +1845,8 @@ def plot_gold(gold):
     
     for i, pattern in enumerate(gold.patterns):
         G.add_node(pattern.phrase)
-        color[pattern.phrase] = palette[0]
+        node_color[pattern.phrase] = palette[0]
+        node_size[pattern.phrase] = 25
         subset[pattern.phrase] = i
         
         phrase_html = f'<i>{pattern.phrase}</i>'
@@ -1859,10 +1861,12 @@ def plot_gold(gold):
                 text=formatter.format_occurrence(occ))
 
             G.add_edge(pattern.phrase, get_gold_id(occ))
-            color[get_gold_id(occ)] = palette[1]
+            node_color[get_gold_id(occ)] = palette[1]
+            node_size[get_gold_id(occ)] = 10
             subset[get_gold_id(occ)] = i
 
-    nx.set_node_attributes(G, color, "node_color")
+    nx.set_node_attributes(G, node_color, "node_color")
+    nx.set_node_attributes(G, node_size, "node_size")
     nx.set_node_attributes(G, subset, "subset")
     nx.set_node_attributes(G, phrase, "phrase")
     nx.set_node_attributes(G, context, "context")
@@ -1898,9 +1902,10 @@ def plot_gold(gold):
     
     graph_renderer = bokeh.plotting.from_networkx(
         G, nx.spring_layout, fixed=fixed, pos=pos, scale=0.5, k=0.15, center=(0, 0), iterations=100)
-    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size=10, fill_color="node_color")
+    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size="node_size", fill_color="node_color")
     graph_renderer.edge_renderer.glyph = bokeh.models.MultiLine(line_color="black", line_alpha=1, line_width=1.5)
     plot.renderers.append(graph_renderer)
+    
 
     '''
     token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
