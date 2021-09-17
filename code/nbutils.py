@@ -23,6 +23,7 @@ import zipfile
 import io
 import requests
 import codecs
+import textwrap
 
 import bokeh.plotting
 import bokeh.models
@@ -1457,17 +1458,27 @@ class NDCGPlotter:
     def __init__(self, gold):
         self._ndcg = NDCGComputer(gold)
 
+        def format_phrase(x):
+            return "\n".join(textwrap.wrap(x, 30))
+        
         self._gold = gold
-        phrase = ([f"mean NDCG"] + [p.phrase for p in self._gold.patterns])[::-1]
+        self._stat_sym = chr(0x25d2)
+        phrase = ([
+            self._stat_sym + " median",
+            self._stat_sym + " mean"] + [
+                format_phrase(p.phrase) for p in self._gold.patterns])[::-1]
         self._phrase = phrase
+        self._tags = (["stats", "stats"] + (["phrase"] * len(self._gold.patterns)))[::-1]
 
         p = bokeh.plotting.figure(
-            y_range=phrase, plot_width=1000, plot_height=20 * len(self._gold.patterns),
+            y_range=phrase,
+            plot_width=default_plot_width(),
+            plot_height=20 * len(self._gold.patterns),
             title="",
             toolbar_location=None, tools="")
         p.x_range = bokeh.models.Range1d(0, 1)
         p.ygrid.visible = False
-        p.xaxis.axis_label = 'NDCG'
+        p.xaxis.axis_label = 'nDCG'
 
         self._p = p        
         self._bokeh_handle = None
@@ -1477,7 +1488,7 @@ class NDCGPlotter:
         for p in self._gold.patterns:
             ndcg.append(self._ndcg.from_index(index, p))
             pbar.update(1)
-        return ([np.average(ndcg)] + ndcg)[::-1]
+        return ([np.median(ndcg), np.mean(ndcg)] + ndcg)[::-1]
     
     def _format_ndcg(self, ndcg):
         return ['%.1f%%' % (x * 100) for x in ndcg]
@@ -1489,6 +1500,7 @@ class NDCGPlotter:
         if self._bokeh_handle is None:
             self._source = bokeh.models.ColumnDataSource({
                 'phrase': self._phrase,
+                'tags': self._tags,
                 'ndcg': ndcg,
                 'ndcg_str': self._format_ndcg(ndcg),
                 'color': [1] * (len(self._phrase) - 1) + [0]
@@ -1513,22 +1525,30 @@ class NDCGPlotter:
             bokeh.io.push_notebook(handle=self._bokeh_handle)
 
     def update_grouped(self, named_indices):
+        def clip(x):
+            if len(x) > 40:
+                return "..." + x[-40:]
+            else:
+                return x
+        
         named_indices = list(named_indices.items())
-        index_names = [x[0] for x in named_indices]
+        index_names = [clip(x[0]) for x in named_indices]
         indices = [x[1] for x in named_indices]
         
         palette = bokeh.palettes.Set2
         
         y = [(x, index_name) for x in self._phrase for index_name in index_names[::-1]]
+        tags = [x for x in self._tags for _ in index_names]
         
         self._p = bokeh.plotting.figure(
             y_range=bokeh.models.FactorRange(*y),
-            plot_width=1000, plot_height=20 * len(self._gold.patterns) * len(indices),
+            plot_width=default_plot_width(),
+            plot_height=20 * len(self._gold.patterns) * len(indices),
             title="",
             toolbar_location=None, tools="")
         self._p.x_range = bokeh.models.Range1d(0, 1)
         self._p.ygrid.visible = False
-        self._p.xaxis.axis_label = 'NDCG'
+        self._p.xaxis.axis_label = 'nDCG'
         
         self._p.yaxis.group_label_orientation = 0
        
@@ -1542,6 +1562,7 @@ class NDCGPlotter:
 
         self._source = bokeh.models.ColumnDataSource({
             'phrase': y,
+            'tags': tags,
             'ndcg': flat_ndcg,
             'ndcg_str': self._format_ndcg(flat_ndcg),
             'color': color,
@@ -1561,11 +1582,20 @@ class NDCGPlotter:
         self._p.add_layout(labels)
 
         _bokeh_show(self._p)
+        
+    @property
+    def data(self):
+        data = list(zip(
+            self._source.data['phrase'],
+            self._source.data['ndcg'],
+            self._source.data['tags']))
+        return [x[:2] for x in data if x[2] == 'phrase']
             
 
 def plot_ndcgs(gold, named_indices):
     plotter = NDCGPlotter(gold)
     plotter.update_grouped(named_indices)
+    return plotter.data
     
     
 class InteractiveQuery:
@@ -2159,7 +2189,9 @@ def token_scores_pie_chart(match, plot_size=350):
     return p
 
     
-def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width=1000):
+def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width=None):
+    if plot_width is None:
+        plot_width = default_plot_width()
     if kind == "bar":
         if _display_mode.static:
             token_scores_stacked_bar_chart(
@@ -2375,3 +2407,42 @@ class CustomSearch:
         
         return self._session.interact(nlp)
 
+
+def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted"]):
+    cases = collections.defaultdict(list)
+    res = dict(((k1.replace("\n", " "), k2), v) for (k1, k2), v in data)
+    for p in gold_data.patterns:
+        a = res[(p.phrase, strategies[0])]
+        b = res[(p.phrase, strategies[1])]
+        if a > b:
+            k = '>'
+        elif a < b:
+            k = '<'
+        else:
+            k = '='
+        cases[k].append((p.phrase, a - b))
+        
+    cases = dict((k, sorted(v, key=lambda x: -abs(x[1]))) for k, v in cases.items())
+        
+    def format_phrase(x):
+        phrase, diff = x
+        if diff == 0:
+            return f'"{phrase}"'
+        else:
+            return f'"{phrase}" <b>{diff:.2f}</b>'
+ 
+    layouts = (
+        ('>', f'{strategies[0]} is better'),
+        ('<', f'{strategies[0]} is worse'),
+        ('=', 'no difference'))
+    
+    def gen_widget(layout):
+        key, name = layout
+        return widgets.HTML(
+            f"<b>{name}</b><br>" + "<br>".join(map(format_phrase, cases[key])),
+            layout={'margin': '2em'})
+    
+    return widgets.VBox([
+        widgets.HBox([gen_widget(x) for x in layouts[:2]]),
+        gen_widget(layouts[2])
+    ])
