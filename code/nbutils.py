@@ -1590,11 +1590,17 @@ class NDCGPlotter:
             self._source.data['ndcg'],
             self._source.data['tags']))
         return [x[:2] for x in data if x[2] == 'phrase']
+    
+    def save(self, path):
+        from bokeh.io import export_png
+        export_png(self._p, filename=path)
             
 
-def plot_ndcgs(gold, named_indices):
+def plot_ndcgs(gold, named_indices, save_to=None):
     plotter = NDCGPlotter(gold)
     plotter.update_grouped(named_indices)
+    if save_to:
+        plotter.save(save_to)
     return plotter.data
     
     
