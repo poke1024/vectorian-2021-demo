@@ -1,26 +1,34 @@
-name: vectorian-jupyter
+name: vectorian-notebook
 channels:
   - default
   - conda-forge
-  - pytorch
 dependencies:
-  - python=3.8
-  - bokeh==2.3.1
-  - ipywidgets
-  - widgetsnbextension
-  - faiss-cpu
-  - beautifulsoup4==4.9
+  - python=3.9
+  - bokeh==2.3.3
+  - ipywidgets==7.6.3
+  - widgetsnbextension==3.5.1
+  - beautifulsoup4==4.10
+  - scikit-learn==0.24.2
+  - matplotlib
+  - skl2onnx
+  - onnxruntime
+  - h5py
+  - pyyaml
+  - tokenizers==0.10.3
+  - sentence-transformers==2.0.0
+  - sentencepiece==0.1.95
+  - networkx==2.6.2
+  - faiss-cpu==1.7.0
   - pip
   - pip:
-      - vectorian>=0.9.7
+      - vectorian==0.9.8
       - pybind11==2.6.2
-      - sentence-transformers==0.4
-      - jupyter_bokeh==3.0.0
+      - gensim>=3.8.3, <4.0.0
+      - jupyter_bokeh==3.0.2
       - opentsne==0.6.0
       - spacy==3.1.2
       - spacy_sentence_bert==0.1.2
       - markdown==3.3.4
-      - networkx==2.5.1
       - jp_proxy_widget==1.0.10
-      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0-py3-none-any.whl
       - pydot==1.4.2
+      - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0-py3-none-any.whl
