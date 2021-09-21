@@ -4,6 +4,7 @@
 /data/raw_data/vectorian_cache/embeddings
 /data/raw_data/sentence_transformers/sbert.net_models_paraphrase-distilroberta-base-v1.zip
 /data/raw_data/sentence_transformers/sbert.net_models_paraphrase-distilroberta-base-v1
+/data/raw_data/sentence_transformers/sentence-transformers_paraphrase-distilroberta-base-v1
 /data/raw_data/numberbatch-19.08-en-pca-50.zip
 /data/processed_data/temp_corpus/temp_corpus_*
 /.idea
