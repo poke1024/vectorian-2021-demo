@@ -1,4 +1,4 @@
-name: vectorian-notebook
+name: vectorian-notebook-py39-new
 channels:
   - default
   - conda-forge
@@ -9,11 +9,11 @@ dependencies:
   - widgetsnbextension==3.5.1
   - beautifulsoup4==4.10
   - scikit-learn==0.24.2
-  - matplotlib
-  - skl2onnx
-  - onnxruntime
-  - h5py
-  - pyyaml
+  - matplotlib==3.4.3
+  - skl2onnx==1.9.2
+  - onnxruntime==1.7.2
+  - h5py==2.10.0
+  - pyyaml==5.4.1
   - tokenizers==0.10.3
   - sentence-transformers==2.0.0
   - sentencepiece==0.1.95
@@ -21,7 +21,7 @@ dependencies:
   - faiss-cpu==1.7.0
   - pip
   - pip:
-      - vectorian==0.9.8
+      - vectorian==0.9.10
       - pybind11==2.6.2
       - gensim>=3.8.3, <4.0.0
       - jupyter_bokeh==3.0.2
