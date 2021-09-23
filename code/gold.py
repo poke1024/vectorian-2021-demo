@@ -17,6 +17,10 @@ class Pattern:
         return self._phrase
 
     @property
+    def source(self):
+        return self._source
+    
+    @property
     def occurrences(self):
         return self._occurrences
     
@@ -65,7 +69,11 @@ class Data:
             data = json.loads(f.read())
 
             for entry in data:
-                pattern = Pattern(entry["phrase"], entry["source"])
+                pattern = Pattern(
+                    entry["phrase"],
+                    Source(
+                        entry["source"],
+                        "William Shakespeare"))
                 self._patterns.append(pattern)
 
                 for m in entry["matches"]:

@@ -10,7 +10,6 @@ import enum
 import sklearn.metrics
 import itertools
 import functools
-import ipywidgets as widgets
 import jp_proxy_widget
 import requests
 import markdown
@@ -18,6 +17,7 @@ import openTSNE
 import openTSNE.callbacks
 import networkx as nx
 import IPython.core.display
+import ipywidgets as widgets
 import xml.etree.ElementTree as ET
 import zipfile
 import io
@@ -300,7 +300,7 @@ class Browser:
 
         def query_contexts():
             occurrences = gold.patterns[int(pattern_select.value)].occurrences
-            return [(x.source.work, i) for i, x in enumerate(occurrences)]
+            return [(f"{x.source.work} by {x.source.author}", i) for i, x in enumerate(occurrences)]
 
         if isinstance(initial_context, str):
             initial_context = find_index_by_filter(
@@ -326,7 +326,7 @@ class Browser:
             display(IPython.core.display.HTML(html))
 
         elif _display_mode.static:
-
+            
             pattern_select = bokeh.models.Select(
                 options=[(str(i), p.phrase) for i, p in enumerate(gold.patterns)],
                 value=str(initial_phrase - 1),
@@ -376,7 +376,7 @@ class Browser:
             display(widgets.VBox([
                 widgets.HBox([pattern_select, context_select]),
                 context_display
-            ]))
+            ], layout={'width': f'{default_plot_width()}px'}))
             
     @property
     def occurrence(self):
@@ -576,7 +576,7 @@ class EmbeddingPlotter:
                 docs.append(DocData(
                     doc=self._id_to_doc[get_gold_id(occ)],
                     query=pattern.phrase,
-                    work=occ.source.work))
+                    work=f"{occ.source.work} by {occ.source.author}"))
         self._docs = docs
          
         self._doc_emb_tooltips = """
@@ -1876,7 +1876,7 @@ def plot_gold(gold):
 
     doc_template = string.Template("""
         <div style="margin-left:2em">
-            <span style="font-variant:small-caps; font-size: 14pt;">${title}</style>
+            <span style="font-variant:small-caps; font-size: 14pt;">${work}</span> by <span style="font-size:10 pt;">${author}</span>
             <hr>
             <div style="font-variant:normal; font-size: 10pt;">${text}</div>
         </div>
@@ -1895,7 +1895,8 @@ def plot_gold(gold):
         for occ in pattern.occurrences:
             phrase[get_gold_id(occ)] = ""  # phrase_html + "<hr>"
             context[get_gold_id(occ)] = doc_template.substitute(
-                title=occ.source.work,
+                work=occ.source.work,
+                author=occ.source.author,
                 phrase=occ.evidence.phrase,
                 text=formatter.format_occurrence(occ))
 
