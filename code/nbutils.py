@@ -58,11 +58,14 @@ if os.environ.get("VECTORIAN_DEV"):
 
 from vectorian.embeddings import Word2VecVectors, TokenEmbeddingAggregator, prepare_docs
 from vectorian.embeddings import CachedPartitionEncoder
+from vectorian.embeddings import StackedEmbedding
+from vectorian.embeddings import Zoo
 from vectorian.index import DummyIndex
 from vectorian.metrics import TokenSimilarity, CosineSimilarity
 from vectorian.interact import PartitionMetricWidget
 from vectorian.importers import TextImporter
 from vectorian.session import LabSession
+from vectorian.embeddings import SpacyVectorEmbedding, VectorCache
 
 
 class DisplayMode(enum.Enum):
@@ -2453,3 +2456,30 @@ def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted
         widgets.HBox([gen_widget(x) for x in layouts[:2]]),
         gen_widget(layouts[2])
     ])
+
+
+def load_embeddings(nlp):
+    the_embeddings = {}
+
+    the_embeddings["glove"] = Zoo.load("glove-6B-50")
+    the_embeddings["fasttext"] = Zoo.load("fasttext-en-mini")
+
+    if running_inside_binder():  # use precomputed version of Numberbatch?
+        the_embeddings["numberbatch"] = nbutils.download_word2vec_embedding(
+            "data/raw_data/numberbatch-19.08-en-pca-50",
+            "https://zenodo.org/record/4916056/files/numberbatch-19.08-en-pca-50.zip",
+        )
+    else:
+        # The following reduction of full Numberbatch to n=50 only works in envs
+        # with enough memory. For Binder etc. use the Zenodo version above.
+        the_embeddings["numberbatch"] = Zoo.load("numberbatch-19.08-en").pca(50)
+
+    the_embeddings["fasttext_numberbatch"] = StackedEmbedding(
+        [the_embeddings["fasttext"], the_embeddings["numberbatch"]]
+    )
+
+    the_embeddings["sbert"] = SpacyVectorEmbedding(
+        nlp, 768, cache=VectorCache("data/processed_data/sbert_contextual", readonly=True)
+    )
+    
+    return the_embeddings
