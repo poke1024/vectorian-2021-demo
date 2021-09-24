@@ -24,7 +24,7 @@ dependencies:
   - networkx==2.6.2
   - pip
   - pip:
-      - vectorian==0.9.10
+      - vectorian==0.9.11
       - pybind11==2.6.2
       - gensim>=3.8.3, <4.0.0
       - jupyter_bokeh==3.0.2
