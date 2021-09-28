@@ -24,6 +24,7 @@ import io
 import requests
 import codecs
 import textwrap
+import json
 
 import bokeh.plotting
 import bokeh.models
@@ -39,6 +40,8 @@ from bs4 import BeautifulSoup
 from tqdm.autonotebook import tqdm
 from pathlib import Path
 from contextlib import contextmanager
+from collections import namedtuple
+from cached_property import cached_property
 
 data_path = Path(os.environ.get("VECTORIAN_DEMO_DATA_PATH", "data")).absolute()
 if not data_path.is_dir():
@@ -94,7 +97,7 @@ def default_plot_width():
 def running_inside_binder():
     return os.environ.get("BINDER_SERVICE_HOST") is not None
 
-
+    
 def initialize(display_mode="auto"):
     global _display_mode
     if display_mode == "auto":
@@ -201,6 +204,117 @@ def make_nlp(sbert_model_name):
         return nlp
 
 
+GoldV1Source = namedtuple("GoldV1Source", ["work", "author"])
+
+
+def gold_v2_sources(gold):
+    nodes = gold.nodes()
+    sources = []
+    for x, d in gold.in_degree(nodes):
+        if d == 0:
+            sources.append(x)
+    return sources
+
+
+class GoldV1Pattern:
+    def __init__(self, phrase, source):
+        self._phrase = phrase
+        self._source = source
+        self._occurrences = []
+    
+    @property
+    def phrase(self):
+        return self._phrase
+
+    @property
+    def source(self):
+        return self._source
+    
+    @property
+    def occurrences(self):
+        return self._occurrences
+    
+    def add_occurrence(self, occ):
+        self._occurrences.append(occ)
+        occ.attach(self)        
+    
+    
+GoldV1Evidence = namedtuple("Text", ["context", "phrase"])
+    
+
+class GoldV1Occurrence:
+    def __init__(self, gold_id, evidence, source):
+        self._gold_id = gold_id
+        self._evidence = evidence
+        self._source = source
+        self._pattern = None
+        
+    @cached_property
+    def metadata(self):
+        return {'gold_id': self._gold_id}
+
+    @property
+    def evidence(self):
+        return self._evidence
+
+    @property
+    def source(self):
+        return self._source
+
+    @property
+    def pattern(self):
+        return self._pattern
+    
+    def attach(self, pattern):
+        assert self._pattern is None
+        self._pattern = pattern
+    
+
+class GoldV1Data:
+    def __init__(self, gold_v2):
+        self._patterns = []
+        self._occurrences = []
+
+        sources = gold_v2_sources(gold_v2)
+
+        for x in sources:
+            pattern = GoldV1Pattern(
+                gold_v2.nodes[x]["phrase"],
+                GoldV1Source(
+                    gold_v2.nodes[x]["source"].book,
+                    gold_v2.nodes[x]["source"].author))
+            self._patterns.append(pattern)
+
+            for m_id in [x[1] for x in gold_v2.out_edges(x)]:
+                m = gold_v2.nodes[m_id]
+                occ = GoldV1Occurrence(
+                    m_id,
+                    GoldV1Evidence(
+                        m["context"],
+                        m["phrase"]),
+                    GoldV1Source(
+                        m["source"].book,
+                        m["source"].author
+                    ))
+                pattern.add_occurrence(occ)
+                self._occurrences.append(occ)
+        
+    @property
+    def patterns(self):
+        return self._patterns
+    
+    @property
+    def occurrences(self):
+        return self._occurrences
+
+
+def to_legacy_gold(gold):
+    if isinstance(gold, nx.DiGraph):
+        return GoldV1Data(gold)
+    else:
+        return gold
+    
+
 def occ_digest(occ, n=80):
     return f"{occ.source.work}: {occ.evidence.context}"[:n] + "..."
                 
@@ -285,6 +399,7 @@ def find_index_by_filter(terms, s):
     
 class Browser:
     def __init__(self, gold, initial_phrase=1, initial_context=1, rows=5):
+        gold = to_legacy_gold(gold)
         self._gold = gold
         
         formatter = OccurenceFormatter()
@@ -390,6 +505,7 @@ class Browser:
     
 class TokenSimPlotterFactory:
     def __init__(self, session, nlp, gold):
+        gold = to_legacy_gold(gold)
         self._session = session
         self._nlp = nlp
         self._gold = gold
@@ -1133,6 +1249,7 @@ class EmbeddingPlotter:
 
                 
 def plot_doc_embeddings(embedder_factory, gold, plot_args):
+    gold = to_legacy_gold(gold)
     plotters = []
     
     for args in plot_args:
@@ -1177,6 +1294,7 @@ def plot_doc_embeddings(embedder_factory, gold, plot_args):
             
 class DocEmbeddingExplorer:
     def __init__(self, *args, gold, **kwargs):
+        gold = to_legacy_gold(gold)
         self._embedder_factory = DocEmbedderFactory(*args, **kwargs)
         self._gold = gold
         
@@ -1263,6 +1381,7 @@ class TokenSimilarityPlotter:
             self._update_figures_html()
             
     def __init__(self, session, nlp, gold, token, initial_occ=None, n_figures=2, top_n=15):
+        gold = to_legacy_gold(gold)
         self._session = session
         self._nlp = nlp
         self._gold = gold
@@ -1403,6 +1522,7 @@ class TokenSimilarityPlotter:
 
             
 def plot_token_similarity(session, nlp, gold, token="high", occ=None, n_figures=2, top_n=15):
+    gold = to_legacy_gold(gold)
     plotter = TokenSimilarityPlotter(session, nlp, gold, token, occ, n_figures=n_figures, top_n=top_n)
     if _display_mode.fully_interactive:
         bokeh.io.show(plotter.create)
@@ -1600,6 +1720,7 @@ class NDCGPlotter:
             
 
 def plot_ndcgs(gold, named_indices, save_to=None):
+    gold = to_legacy_gold(gold)
     plotter = NDCGPlotter(gold)
     plotter.update_grouped(named_indices)
     if save_to:
@@ -1690,6 +1811,7 @@ class InteractiveIndexBuilder:
     
 class ResultScoresPlotter:
     def __init__(self, gold, index, query=None):
+        gold = to_legacy_gold(gold)
         self._gold = gold
         self._index = index
         self._selected_rank = None
@@ -1828,6 +1950,7 @@ class ResultScoresPlotter:
                         
             
 def plot_results(gold, index, query=None, rank=None, plot_height=200):
+    gold = to_legacy_gold(gold)
     bks = []
     jps = []
     plot_width = 1200
@@ -1865,6 +1988,7 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
 
         
 def plot_gold(gold):
+    gold = to_legacy_gold(gold)
     G = nx.Graph()
 
     node_color = {}
@@ -2315,6 +2439,7 @@ def plot_embedding_vectors_mul(pairs, get_vec):
     
 class DocEmbeddingBars:
     def __init__(self, embedder, session, gold_data):
+        gold_data = to_legacy_gold(gold_data)
         self._embedder = embedder
         self._gold_data = gold_data
         
@@ -2419,6 +2544,7 @@ class CustomSearch:
 
 
 def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted"]):
+    gold_data = to_legacy_gold(gold_data)
     cases = collections.defaultdict(list)
     res = dict(((k1.replace("\n", " "), k2), v) for (k1, k2), v in data)
     for p in gold_data.patterns:

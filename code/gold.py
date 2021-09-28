@@ -1,98 +1,23 @@
 import json
+import networkx as nx
 from collections import namedtuple
-from cached_property import cached_property
 
 
-Source = namedtuple("Source", ["work", "author"])
+Source = namedtuple("Source", ["book", "author"])
 
 
-class Pattern:
-    def __init__(self, phrase, source):
-        self._phrase = phrase
-        self._source = source
-        self._occurrences = []
-    
-    @property
-    def phrase(self):
-        return self._phrase
+def load_data(path):
+    graph = nx.DiGraph()
 
-    @property
-    def source(self):
-        return self._source
-    
-    @property
-    def occurrences(self):
-        return self._occurrences
-    
-    def add_occurrence(self, occ):
-        self._occurrences.append(occ)
-        occ.attach(self)        
-    
-    
-Evidence = namedtuple("Text", ["context", "phrase"])
-    
+    with open(path, "r") as f:
+        data = json.loads(f.read())
 
-class Occurrence:
-    def __init__(self, gold_id, evidence, source):
-        self._gold_id = gold_id
-        self._evidence = evidence
-        self._source = source
-        self._pattern = None
-        
-    @cached_property
-    def metadata(self):
-        return {'gold_id': self._gold_id}
+        for k, v in data["nodes"].items():
+            v["source"] = Source(v["source"]["book"], v["source"]["author"])
+            v["id"] = k
+            graph.add_node(k, **v)
 
-    @property
-    def evidence(self):
-        return self._evidence
+        for edge in data["edges"]:
+            graph.add_edge(edge[0], edge[1])
 
-    @property
-    def source(self):
-        return self._source
-
-    @property
-    def pattern(self):
-        return self._pattern
-    
-    def attach(self, pattern):
-        assert self._pattern is None
-        self._pattern = pattern
-    
-
-class Data:
-    def __init__(self, path):
-        self._patterns = []
-        self._occurrences = []
-
-        with open(path, "r") as f:
-            data = json.loads(f.read())
-
-            for entry in data:
-                pattern = Pattern(
-                    entry["phrase"],
-                    Source(
-                        entry["source"],
-                        "William Shakespeare"))
-                self._patterns.append(pattern)
-
-                for m in entry["matches"]:
-                    occ = Occurrence(
-                        m["id"],
-                        Evidence(
-                            m["context"],
-                            m["quote"]),
-                        Source(
-                            m["work"],
-                            m["author"]
-                        ))
-                    pattern.add_occurrence(occ)
-                    self._occurrences.append(occ)
-        
-    @property
-    def patterns(self):
-        return self._patterns
-    
-    @property
-    def occurrences(self):
-        return self._occurrences
+    return graph
