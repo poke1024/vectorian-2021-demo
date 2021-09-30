@@ -217,11 +217,16 @@ def gold_v2_sources(gold):
 
 
 class GoldV1Pattern:
-    def __init__(self, phrase, source):
+    def __init__(self, gold_id, phrase, source):
+        self._gold_id = gold_id
         self._phrase = phrase
         self._source = source
         self._occurrences = []
     
+    @property
+    def metadata(self):
+        return {'gold_id': self._gold_id}
+
     @property
     def phrase(self):
         return self._phrase
@@ -249,7 +254,7 @@ class GoldV1Occurrence:
         self._source = source
         self._pattern = None
         
-    @cached_property
+    @property
     def metadata(self):
         return {'gold_id': self._gold_id}
 
@@ -279,6 +284,7 @@ class GoldV1Data:
 
         for x in sources:
             pattern = GoldV1Pattern(
+                gold_v2.nodes[x]["id"],
                 gold_v2.nodes[x]["phrase"],
                 GoldV1Source(
                     gold_v2.nodes[x]["source"].book,
@@ -409,16 +415,16 @@ class Browser:
                 [p.phrase for p in gold.patterns], initial_phrase) + 1
 
         pattern_select = widgets.Dropdown(
-            options=[(p.phrase, i) for i, p in enumerate(gold.patterns)],
+            options=[(f'"{p.phrase}" in {p.source.work} by {p.source.author} [{get_gold_id(p)}]', i) for i, p in enumerate(gold.patterns)],
             value=initial_phrase - 1,
             #rows=rows,
-            description='pattern:',
-            layout={'description_width': 'initial', 'width': 'max-content'})
+            description='phrase:',
+            layout={'description_width': 'initial', 'width': '50em', 'height': '3em'})
         self._pattern_select = pattern_select
 
         def query_contexts():
             occurrences = gold.patterns[int(pattern_select.value)].occurrences
-            return [(f"{x.source.work} by {x.source.author}", i) for i, x in enumerate(occurrences)]
+            return [(f"{x.source.work} by {x.source.author} [{get_gold_id(x)}]", i) for i, x in enumerate(occurrences)]
 
         if isinstance(initial_context, str):
             initial_context = find_index_by_filter(
@@ -428,8 +434,8 @@ class Browser:
             options=query_contexts(),
             value=initial_context - 1,
             #rows=rows,
-            description='occurs in:',
-            layout={'description_width': 'initial', 'width': 'max-content'})
+            description='re-occurs in:',
+            layout={'description_width': 'initial', 'width': '50em', 'height': '3em'})
         self._context_select = context_select
 
         if False and _display_mode.static:
@@ -465,14 +471,15 @@ class Browser:
                 text=formatter.format_occurrence(occurrences[i]), width=550)
                 
             root = bokeh.layouts.column(
-                bokeh.layouts.row(pattern_select, context_select),
+                bokeh.layouts.column(pattern_select, context_select),
                 bokeh.layouts.row(bokeh.models.Div(text="as:", width=50), context_display))
                 
             _bokeh_show(root)
                         
         else:
             context_display = widgets.HTML(
-                "", description="as:", style={'description_width': 'initial', 'width': 'max'})
+                "", description="as:",
+                layout={'description_width': 'initial', 'max_width': '50em'})
 
             def on_phrase_change(change):
                 context_select.unobserve(on_context_change)
@@ -485,14 +492,14 @@ class Browser:
                 occurrences = gold.patterns[pattern_select.value].occurrences
                 works = query_contexts()
                 i = context_select.value
-                context_display.value = formatter.format_occurrence(occurrences[i]) + f' <span style="float:right;"><i>{get_gold_id(occurrences[i])}</i></span>'
+                context_display.value = formatter.format_occurrence(occurrences[i])
 
             pattern_select.observe(on_phrase_change)
             context_select.observe(on_context_change)
             on_context_change(None)
 
             display(widgets.VBox([
-                widgets.HBox([pattern_select, context_select]),
+                widgets.VBox([pattern_select, context_select]),
                 context_display
             ], layout={'width': f'{default_plot_width()}px'}))
             
@@ -1987,100 +1994,106 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
     return plotters[0]
 
         
-def plot_gold(gold):
+def plot_gold(gold, title=""):
     gold = to_legacy_gold(gold)
-    G = nx.Graph()
+    G = nx.DiGraph()
 
     node_color = {}
     node_size = {}
     subset = {}
     
-    phrase = {}
-    context = {}
+    hover_info = {}
     
     formatter = OccurenceFormatter()
     palette = bokeh.palettes.Spectral4
 
-    doc_template = string.Template("""
-        <div style="margin-left:2em">
-            <span style="font-variant:small-caps; font-size: 14pt;">${work}</span> by <span style="font-size:10 pt;">${author}</span>
-            <hr>
-            <div style="font-variant:normal; font-size: 10pt;">${text}</div>
+    phrase_template = string.Template("""
+        <div style="margin-left: 1em; max-width: 300px;">
+            <div style="font-variant:normal; font-size: 10pt;">“${phrase}”</div>
+            <br>
+            from: <span style="font-variant:small-caps; font-size: 10pt;">${work}</span><span style="font-size:10pt;"> by ${author}</span>
+        </div>
+        """)
+
+    phrase_context_template = string.Template("""
+        <div style="margin-left: 1em; max-width: 300px;">
+            <div style="font-variant:normal; font-size: 10pt;">“${phrase}”</div>
+            <br>
+            from: <span style="font-variant:small-caps; font-size: 10pt;">${work}</span><span style="font-size:10pt;"> by ${author}</span>
+            <br><br>
+            <div style="margin-left: 2em;"><div style="font-variant:normal; font-size: 8pt;">“${context}”</div></div>
         </div>
         """)
     
     for i, pattern in enumerate(gold.patterns):
-        G.add_node(pattern.phrase)
-        node_color[pattern.phrase] = palette[0]
-        node_size[pattern.phrase] = 25
-        subset[pattern.phrase] = i
+        pattern_id = get_gold_id(pattern)
         
-        phrase_html = f'<i>{pattern.phrase}</i>'
-        phrase[pattern.phrase] = phrase_html
-        context[pattern.phrase] = ""
+        G.add_node(pattern_id)
+        node_color[pattern_id] = palette[3]
+        node_size[pattern_id] = 15
+        subset[pattern_id] = i
+        
+        hover_info[pattern_id] = phrase_template.substitute(
+            work=pattern.source.work,
+            author=pattern.source.author,
+            phrase=pattern.phrase)
 
         for occ in pattern.occurrences:
-            phrase[get_gold_id(occ)] = ""  # phrase_html + "<hr>"
-            context[get_gold_id(occ)] = doc_template.substitute(
+            occ_id = get_gold_id(occ)
+            
+            hover_info[occ_id] = phrase_context_template.substitute(
                 work=occ.source.work,
                 author=occ.source.author,
                 phrase=occ.evidence.phrase,
-                text=formatter.format_occurrence(occ))
+                context=formatter.format_occurrence(occ))
 
-            G.add_edge(pattern.phrase, get_gold_id(occ))
-            node_color[get_gold_id(occ)] = palette[1]
-            node_size[get_gold_id(occ)] = 10
-            subset[get_gold_id(occ)] = i
+            G.add_edge(pattern_id, occ_id)
+            node_color[occ_id] = palette[2]
+            node_size[occ_id] = 10
+            subset[occ_id] = i
 
     nx.set_node_attributes(G, node_color, "node_color")
     nx.set_node_attributes(G, node_size, "node_size")
     nx.set_node_attributes(G, subset, "subset")
-    nx.set_node_attributes(G, phrase, "phrase")
-    nx.set_node_attributes(G, context, "context")
+    nx.set_node_attributes(G, hover_info, "hover_info")
             
-    fixed = []
-    pos = {}
-    for i, pattern in enumerate(gold.patterns):
-        fixed.append(pattern.phrase)
-        y = i // 8
-        x = i % 8
-        s = 0.75
-        pos[pattern.phrase] = (x * s, y * s)
-
-    pos_arr = np.array(list(pos.values()))
-    pad = 1
-    
-    plot_width = default_plot_width()
-        
     plot = bokeh.models.Plot(
-        plot_width=plot_width, plot_height=400,
-        x_range=bokeh.models.Range1d(np.min(pos_arr[:, 0]) - pad, np.max(pos_arr[:, 0]) + pad),
-        y_range=bokeh.models.Range1d(np.min(pos_arr[:, 1]) - pad, np.max(pos_arr[:, 1]) + pad),
-        output_backend="svg")
+        title=title,
+        plot_width=600, plot_height=600, match_aspect=True,
+        output_backend="svg", toolbar_location="below")
     
     plot.toolbar.logo = None
     
+    plot.add_tools(bokeh.models.PanTool(dimensions="height"))
     node_hover_tool = bokeh.models.HoverTool(
         tooltips="""
-        @phrase
-        @context
+        @hover_info
         """)
     plot.add_tools(node_hover_tool)
     
     graph_renderer = bokeh.plotting.from_networkx(
-        G, nx.spring_layout, fixed=fixed, pos=pos, scale=0.5, k=0.15, center=(0, 0), iterations=100)
-    graph_renderer.node_renderer.glyph = bokeh.models.Circle(size="node_size", fill_color="node_color")
-    graph_renderer.edge_renderer.glyph = bokeh.models.MultiLine(line_color="black", line_alpha=1, line_width=1.5)
+        G, nx.nx_agraph.graphviz_layout)
+    graph_renderer.node_renderer.glyph = bokeh.models.Circle(
+        size="node_size", fill_color="node_color")
+    graph_renderer.edge_renderer.glyph = bokeh.models.MultiLine(
+        line_color="black", line_alpha=0, line_width=0)
     plot.renderers.append(graph_renderer)
-    
+        
+    pos = graph_renderer.layout_provider.graph_layout
+    for eu, ev in G.edges:
+        u = np.array(pos[eu])
+        v = np.array(pos[ev])
+        
+        d = (v - u) / np.linalg.norm(v - u)
+        eps = 5
+        u += (G.nodes[eu]["node_size"] + eps) * d
+        v -= (G.nodes[ev]["node_size"] + eps) * d
+        
+        plot.add_layout(bokeh.models.Arrow(end=bokeh.models.NormalHead(
+            fill_color="black", size=5),
+            x_start=u[0], y_start=u[1],
+            x_end=v[0], y_end=v[1], line_width=1.5))
 
-    '''
-    token_labels = bokeh.models.LabelSet(x='x', y='y', text='token',
-        x_offset=5, y_offset=5, source=source['tokens'],
-        render_mode='canvas', text_font_size='6pt')
-    tok_emb_p.add_layout(token_labels)
-    '''
-    
     bokeh.io.show(plot)
     
 
