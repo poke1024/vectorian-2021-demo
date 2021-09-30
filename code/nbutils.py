@@ -69,6 +69,7 @@ from vectorian.interact import PartitionMetricWidget
 from vectorian.importers import TextImporter
 from vectorian.session import LabSession
 from vectorian.embeddings import SpacyVectorEmbedding, VectorCache
+from vectorian.embeddings import CachedPartitionEncoder, SpanEncoder
 
 
 class DisplayMode(enum.Enum):
@@ -182,23 +183,28 @@ def download_word2vec_embedding(name, url):
     raise ValueError("zip file is empty")
 
 
-def make_nlp(sbert_model_name):
+def make_nlp(sbert_model_name=None):
     # uses 'tagger' from en_core_web_sm
     # we include 'parser' so that Vectorian can detect sentence boundaries
 
-    sbert_model_path = sbert_cache_path / "sbert.net_models_paraphrase-distilroberta-base-v1"
+    nlp = spacy.load('en_core_web_sm', exclude=['ner'])
+    
+    if sbert_model_name is None:
+        return nlp
+
+    sbert_model_path = sbert_cache_path / f"sentence-transformers_{sbert_model_name}"
     sbert_model_zip_path = sbert_model_path.parent / (sbert_model_path.name + ".zip")
 
-    if not sbert_model_zip_path.exists():
-        download(
-            "https://zenodo.org/record/4923260/files/sbert.net_models_paraphrase-distilroberta-base-v1.zip",
-            sbert_model_zip_path)
-    if not sbert_model_path.is_dir():
-        with zipfile.ZipFile(sbert_model_zip_path, "r") as zf:
-            zf.extractall(sbert_model_path.parent)
+    if False:
+        if not sbert_model_path.exists() and not sbert_model_zip_path.exists():
+            download(
+                f"https://zenodo.org/record/4923260/files/{sbert_model_name}.zip",
+                sbert_model_zip_path)
+        if not sbert_model_path.is_dir():
+            with zipfile.ZipFile(sbert_model_zip_path, "r") as zf:
+                zf.extractall(sbert_model_path.parent)
 
     with monkey_patch_sentence_transformers_tqdm("Downloading Sentence BERT model"):
-        nlp = spacy.load('en_core_web_sm', exclude=['ner'])
         nlp.add_pipe('sentence_bert', config={'model_name': sbert_model_name})
         nlp.meta["name"] = "core_web_sm_AND_" + sbert_model_name
         return nlp
@@ -287,8 +293,8 @@ class GoldV1Data:
                 gold_v2.nodes[x]["id"],
                 gold_v2.nodes[x]["phrase"],
                 GoldV1Source(
-                    gold_v2.nodes[x]["source"].book,
-                    gold_v2.nodes[x]["source"].author))
+                    gold_v2.nodes[x]["source"]["book"],
+                    gold_v2.nodes[x]["source"]["author"]))
             self._patterns.append(pattern)
 
             for m_id in [x[1] for x in gold_v2.out_edges(x)]:
@@ -299,8 +305,8 @@ class GoldV1Data:
                         m["context"],
                         m["phrase"]),
                     GoldV1Source(
-                        m["source"].book,
-                        m["source"].author
+                        m["source"]["book"],
+                        m["source"]["author"]
                     ))
                 pattern.add_occurrence(occ)
                 self._occurrences.append(occ)
@@ -536,6 +542,50 @@ class TSNECallback(openTSNE.callbacks.Callback):
         pass
 
     
+class DocEncoder:
+    def __init__(self, embedding, session):
+        assert embedding.is_contextual
+
+        nlp = embedding._nlp
+        self._nlp = nlp
+        
+        k = self.name
+
+        # create an encoder that basically calls nlp(t).vector
+        self._encoder = CachedPartitionEncoder(
+            SpanEncoder(lambda texts: [nlp(t).vector for t in texts])
+        )
+
+        # compute encodings and/or save cached data
+        self._encoder.try_load("data/processed_data/doc_embeddings_" + k)
+        self._encoder.cache(session.documents, session.partition("document"))
+        self._encoder.save("data/processed_data/doc_embeddings_" + k)
+
+    @property
+    def name(self):
+        return self._nlp.meta["name"]
+
+    @property
+    def nlp(self):
+        return self._nlp
+
+    @property
+    def encoder(self):
+        return self._encoder
+    
+
+def make_doc_encoders(the_embeddings, session):
+    encoders = {}
+    
+    for k, v in the_embeddings.items():
+        if v.is_contextual:
+            encoder = DocEncoder(v, session)
+            encoders[encoder.name] = encoder
+    
+    return encoders
+
+    
+    
 class DocEmbedderFactory:
     def __init__(self, session, nlp, doc_encoders={}):
         self._session = session
@@ -666,7 +716,7 @@ class DocEmbedder:
     def encoder(self):
         option = self.option
         if option.doc_encoder is not None:
-            return option.doc_encoder
+            return option.doc_encoder.encoder
         else:
             agg = getattr(np, self._aggregator.value)
             return CachedPartitionEncoder(
@@ -680,8 +730,14 @@ class DocEmbedder:
         return DummyIndex(self.partition).make_query(text)
     
     def encode(self, docs):
+        option = self.option
+        if option.doc_encoder is not None:
+            nlp = option.doc_encoder.nlp
+        else:
+            nlp = self._nlp
+            
         return self.encoder.encode(
-            prepare_docs(docs, self._nlp), self.partition).unmodified
+            prepare_docs(docs, nlp), self.partition).unmodified
     
 
 class EmbeddingPlotter:    
@@ -2008,7 +2064,7 @@ def plot_gold(gold, title=""):
     palette = bokeh.palettes.Spectral4
 
     phrase_template = string.Template("""
-        <div style="margin-left: 1em; max-width: 300px;">
+        <div style="margin-left: 1em; max-width: 300px; min-width: 300px;">
             <div style="font-variant:normal; font-size: 10pt;">“${phrase}”</div>
             <br>
             from: <span style="font-variant:small-caps; font-size: 10pt;">${work}</span><span style="font-size:10pt;"> by ${author}</span>
@@ -2016,7 +2072,7 @@ def plot_gold(gold, title=""):
         """)
 
     phrase_context_template = string.Template("""
-        <div style="margin-left: 1em; max-width: 300px;">
+        <div style="margin-left: 1em; max-width: 300px; min-width: 300px;">
             <div style="font-variant:normal; font-size: 10pt;">“${phrase}”</div>
             <br>
             from: <span style="font-variant:small-caps; font-size: 10pt;">${work}</span><span style="font-size:10pt;"> by ${author}</span>
@@ -2365,7 +2421,7 @@ def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width
         plot_size = plot_width // n_cols
         figures = [token_scores_pie_chart(m, plot_size=plot_size) for m in picked]
         bokeh.io.show(bokeh.layouts.gridplot(
-            figures, ncols=n_cols, plot_width=plot_size, plot_height=plot_size * n_rows))
+            figures, ncols=n_cols, width=plot_size, height=plot_size * n_rows))
     else:
         raise ValueError(kind)
 
@@ -2597,7 +2653,7 @@ def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted
     ])
 
 
-def load_embeddings(nlp):
+def load_embeddings(sbert_model_names, readonly=True):
     the_embeddings = {}
 
     the_embeddings["glove"] = Zoo.load("glove-6B-50")
@@ -2617,8 +2673,12 @@ def load_embeddings(nlp):
         [the_embeddings["fasttext"], the_embeddings["numberbatch"]]
     )
 
-    the_embeddings["sbert"] = SpacyVectorEmbedding(
-        nlp, 768, cache=VectorCache("data/processed_data/sbert_contextual", readonly=True)
-    )
+    for model_name in sbert_model_names:
+        cache_dir = Path("data/processed_data/sbert-" + model_name)
+        cache_dir.mkdir(exist_ok=True)
+        the_embeddings[model_name] = SpacyVectorEmbedding(
+            make_nlp(model_name), 768,
+            cache=VectorCache(cache_dir, readonly=readonly)
+        )
     
     return the_embeddings

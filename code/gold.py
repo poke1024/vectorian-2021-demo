@@ -1,9 +1,5 @@
 import json
 import networkx as nx
-from collections import namedtuple
-
-
-Source = namedtuple("Source", ["book", "author"])
 
 
 def load_data(path):
@@ -13,7 +9,6 @@ def load_data(path):
         data = json.loads(f.read())
 
         for k, v in data["nodes"].items():
-            v["source"] = Source(v["source"]["book"], v["source"]["author"])
             v["id"] = k
             graph.add_node(k, **v)
 
