@@ -1685,15 +1685,17 @@ class NDCGPlotter:
         values = [[np.median(x), np.mean(x)] for x in self._ndcg]
         self.plot(labels, values)
         
-    def plot_quantiles(self):
+    def plot_hist(self):
         palette = self._palette[max(3, len(self._indices))]
                 
         data = {
             'quantiles': [f"{x * 10}%" for x in range(11)]
         }
+        
+        q = np.linspace(0, 1, 11)
 
         for index_name, values in zip(self._index_names[::-1], self._ndcg):
-            q = np.quantile(values, np.linspace(0, 1, 11))
+            #q = np.quantile(values, np.linspace(0, 1, 11))
             bins = np.digitize(values, q) - 1
             top = np.bincount(bins, minlength=11)
             data[index_name] = top
