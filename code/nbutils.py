@@ -1643,141 +1643,138 @@ class NDCGComputer:
 
     
 class NDCGPlotter:
-    def __init__(self, gold):
+    def __init__(self, gold, named_indices):
         self._ndcg = NDCGComputer(gold)
 
         def format_phrase(x):
             return "\n".join(textwrap.wrap(x, 30))
         
+        def clip(x):
+            return "\n".join(textwrap.wrap(x, 60))
+
+        self._named_indices = list(named_indices.items())
+        self._index_names = [clip(x[0]) for x in self._named_indices]
+        self._indices = [x[1] for x in self._named_indices]
+
         self._gold = gold
-        self._stat_sym = chr(0x25d2)
-        phrase = ([
-            self._stat_sym + " median",
-            self._stat_sym + " mean"] + [
-                format_phrase(p.phrase) for p in self._gold.patterns])[::-1]
-        self._phrase = phrase
-        self._tags = (["stats", "stats"] + (["phrase"] * len(self._gold.patterns)))[::-1]
+        self._phrase = [format_phrase(p.phrase) for p in self._gold.patterns][::-1]
 
-        p = bokeh.plotting.figure(
-            y_range=phrase,
-            plot_width=default_plot_width(),
-            plot_height=20 * len(self._gold.patterns),
-            title="",
-            toolbar_location=None, tools="")
-        p.x_range = bokeh.models.Range1d(0, 1)
-        p.ygrid.visible = False
-        p.xaxis.axis_label = 'nDCG'
-
-        self._p = p        
-        self._bokeh_handle = None
-
+        with tqdm(total=len(self._gold.patterns) * len(self._indices)) as pbar:
+            self._ndcg = np.array([self._ndcg_array(index, pbar) for index in self._indices])[::-1]
+             
+        self._palette = bokeh.palettes.Set2
+        
+        self._cell_h = max([len(x.split("\n")) for x in self._index_names])
+        
     def _ndcg_array(self, index, pbar):
         ndcg = []
         for p in self._gold.patterns:
             ndcg.append(self._ndcg.from_index(index, p))
             pbar.update(1)
-        return ([np.median(ndcg), np.mean(ndcg)] + ndcg)[::-1]
+        return ndcg[::-1]
     
     def _format_ndcg(self, ndcg):
         return ['%.1f%%' % (x * 100) for x in ndcg]
+
+    def plot_details(self):
+        self.plot(self._phrase, self._ndcg)
+
+    def plot_summary(self):
+        stat_sym = chr(0x25d2)
+        labels = [f"{stat_sym} median", f"{stat_sym} mean"]
+        values = [[np.median(x), np.mean(x)] for x in self._ndcg]
+        self.plot(labels, values)
+        
+    def plot_quantiles(self):
+        palette = self._palette[max(3, len(self._indices))]
+                
+        data = {
+            'quantiles': [f"{x * 10}%" for x in range(11)]
+        }
+
+        for index_name, values in zip(self._index_names[::-1], self._ndcg):
+            q = np.quantile(values, np.linspace(0, 1, 11))
+            bins = np.digitize(values, q) - 1
+            top = np.bincount(bins, minlength=11)
+            data[index_name] = top
+
+        source = bokeh.models.ColumnDataSource(data=data)
+        
+        p = bokeh.plotting.figure(
+            x_range=data["quantiles"],
+            plot_width=800, plot_height=500,
+            toolbar_location=None,
+            tools="")
+        
+        n = len(self._indices)
+        w0 = 0.8 / (n + 1)
+        w1 = 0.8 / n
+
+        for i, index_name in enumerate(self._index_names):
+            p.vbar(
+                x=bokeh.transform.dodge("quantiles", -0.25 + w1 * i, range=p.x_range),
+                top=index_name, width=w0, color=palette[n - 1 - i], legend_label=index_name, source=source)
             
-    def update_ungrouped(self, index):
-        with tqdm(total=len(self._gold.patterns)) as pbar:
-            ndcg = self._ndcg_array(index, pbar)
+        p.xgrid.grid_line_color = None
+        p.y_range.start = 0
         
-        if self._bokeh_handle is None:
-            self._source = bokeh.models.ColumnDataSource({
-                'phrase': self._phrase,
-                'tags': self._tags,
-                'ndcg': ndcg,
-                'ndcg_str': self._format_ndcg(ndcg),
-                'color': [1] * (len(self._phrase) - 1) + [0]
-            })
+        p.x_range.range_padding = 0.1
+        p.legend.location = "top_left"
+        p.legend.orientation = "vertical"
 
-            mapper = bokeh.transform.linear_cmap(
-                field_name='color', palette=bokeh.palettes.Set2[3], low=0, high=1)
+        _bokeh_show(p)
+    
+    def plot(self, labels, values):
+        y = [(x, index_name) for x in labels for index_name in self._index_names[::-1]]
+        flat_ndcg = np.transpose(values).flatten()
 
-            self._p.hbar(
-                'phrase', right='ndcg', color=mapper,
-                source=self._source, height=0.75)
-            
-            labels = bokeh.models.LabelSet(x='ndcg', y='phrase', text='ndcg_str', level='glyph',
-                x_offset=0, y_offset=0, source=self._source, render_mode='canvas',
-                text_font_size='8pt', text_align='right', text_baseline='middle', text_color='white')
-            self._p.add_layout(labels)
-
-            self._bokeh_handle = bokeh.io.show(self._p, notebook_handle=True)
-        else:
-            self._source.data['ndcg'] = ndcg
-            self._source.data['ndcg_str'] = self._format_ndcg(ndcg)
-            bokeh.io.push_notebook(handle=self._bokeh_handle)
-
-    def update_grouped(self, named_indices, clip_len=40):
-        def clip(x):
-            if len(x) > clip_len:
-                return x[:clip_len] + "…"
-            else:
-                return x
-        
-        named_indices = list(named_indices.items())
-        index_names = [clip(x[0]) for x in named_indices]
-        indices = [x[1] for x in named_indices]
-        
-        palette = bokeh.palettes.Set2
-        
-        y = [(x, index_name) for x in self._phrase for index_name in index_names[::-1]]
-        tags = [x for x in self._tags for _ in index_names]
-        
-        self._p = bokeh.plotting.figure(
+        line_height = self._cell_h * 20
+        p = bokeh.plotting.figure(
             y_range=bokeh.models.FactorRange(*y),
             plot_width=default_plot_width(),
-            plot_height=20 * len(self._gold.patterns) * len(indices),
+            plot_height=line_height * len(labels) * len(self._indices) + 50,
             title="",
-            toolbar_location=None, tools="")
-        self._p.x_range = bokeh.models.Range1d(0, 1)
-        self._p.ygrid.visible = False
-        self._p.xaxis.axis_label = 'nDCG'
-        
-        self._p.yaxis.group_label_orientation = 0
-       
-        with tqdm(total=len(self._gold.patterns) * len(indices)) as pbar:
-            ndcg = np.array([self._ndcg_array(index, pbar) for index in indices])[::-1]
-        flat_ndcg = np.transpose(ndcg).flatten()
-        
+            toolbar_location=None,
+            tools="")
+        p.x_range = bokeh.models.Range1d(0, 1)
+        p.ygrid.visible = False
+        p.xaxis.axis_label = 'nDCG'
+        p.yaxis.group_label_orientation = 0
+               
         color = np.repeat(
-            np.linspace(0, 1, len(indices))[np.newaxis],
-            len(self._phrase), axis=0).flatten()
+            np.linspace(0, 1, len(self._indices))[np.newaxis],
+            len(labels), axis=0).flatten()
 
-        self._source = bokeh.models.ColumnDataSource({
+        source = bokeh.models.ColumnDataSource({
             'phrase': y,
-            'tags': tags,
+            #'tags': self._tags,
             'ndcg': flat_ndcg,
             'ndcg_str': self._format_ndcg(flat_ndcg),
             'color': color,
-            'y': np.array(list(range(len(self._phrase) * len(indices)))) * 2
+            'y': np.arange(len(y))
         })
 
         mapper = bokeh.transform.linear_cmap(
-            field_name='color', palette=palette[max(3, len(indices))], low=0, high=1)
+            field_name='color', palette=self._palette[max(3, len(self._indices))], low=0, high=1)
 
-        self._p.hbar(
+        p.hbar(
             'phrase', right='ndcg', y='y', color=mapper,
-            source=self._source, height=1)
+            source=source, height=1)
 
         labels = bokeh.models.LabelSet(x='ndcg', y='phrase', text='ndcg_str', level='glyph',
-            x_offset=0, y_offset=0, source=self._source, render_mode='canvas',
+            x_offset=0, y_offset=0, source=source, render_mode='canvas',
             text_font_size='8pt', text_align='right', text_baseline='middle', text_color='white')
-        self._p.add_layout(labels)
+        p.add_layout(labels)
 
-        _bokeh_show(self._p)
+        _bokeh_show(p)
         
     @property
     def data(self):
-        data = list(zip(
-            self._source.data['phrase'],
-            self._source.data['ndcg'],
-            self._source.data['tags']))
-        return [x[:2] for x in data if x[2] == 'phrase']
+        y = [(x, index_name) for x in self._phrase for index_name in self._index_names[::-1]]
+        flat_ndcg = np.transpose(self._ndcg).flatten()
+        return list(zip(
+            y,
+            flat_ndcg))
     
     def save(self, path):
         from bokeh.io import export_png
@@ -1786,11 +1783,8 @@ class NDCGPlotter:
 
 def plot_ndcgs(gold, named_indices, save_to=None):
     gold = to_legacy_gold(gold)
-    plotter = NDCGPlotter(gold)
-    plotter.update_grouped(named_indices)
-    if save_to:
-        plotter.save(save_to)
-    return plotter.data
+    plotter = NDCGPlotter(gold, named_indices)
+    return plotter
     
     
 class InteractiveQuery:
