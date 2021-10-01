@@ -26,7 +26,7 @@ dependencies:
   - pygraphviz==1.7
   - pip
   - pip:
-      - vectorian==0.9.12
+      - vectorian==0.9.13
       - pybind11==2.6.2
       - gensim>=3.8.3, <4.0.0
       - jupyter_bokeh==3.0.2
