@@ -186,8 +186,10 @@ def download_word2vec_embedding(name, url):
 def make_nlp(sbert_model_name=None):
     # uses 'tagger' from en_core_web_sm
     # we include 'parser' so that Vectorian can detect sentence boundaries
+    
+    base_model = 'en_core_web_sm'
 
-    nlp = spacy.load('en_core_web_sm', exclude=['ner'])
+    nlp = spacy.load(base_model, exclude=['ner'])
     
     if sbert_model_name is None:
         return nlp
@@ -206,7 +208,7 @@ def make_nlp(sbert_model_name=None):
 
     with monkey_patch_sentence_transformers_tqdm("Downloading Sentence BERT model"):
         nlp.add_pipe('sentence_bert', config={'model_name': sbert_model_name})
-        nlp.meta["name"] = "core_web_sm_AND_" + sbert_model_name
+        nlp.meta["name"] = sbert_model_name + "_with_" + base_model
         return nlp
 
 
@@ -557,9 +559,9 @@ class DocEncoder:
         )
 
         # compute encodings and/or save cached data
-        self._encoder.try_load("data/processed_data/doc_embeddings_" + k)
+        self._encoder.try_load("data/processed_data/sbert_cache_doc_" + k)
         self._encoder.cache(session.documents, session.partition("document"))
-        self._encoder.save("data/processed_data/doc_embeddings_" + k)
+        self._encoder.save("data/processed_data/sbert_cache_doc_" + k)
 
     @property
     def name(self):
@@ -1710,10 +1712,10 @@ class NDCGPlotter:
             self._source.data['ndcg_str'] = self._format_ndcg(ndcg)
             bokeh.io.push_notebook(handle=self._bokeh_handle)
 
-    def update_grouped(self, named_indices):
+    def update_grouped(self, named_indices, clip_len=40):
         def clip(x):
-            if len(x) > 40:
-                return "..." + x[-40:]
+            if len(x) > clip_len:
+                return x[:clip_len] + "…"
             else:
                 return x
         
@@ -2674,7 +2676,7 @@ def load_embeddings(sbert_model_names, readonly=True):
     )
 
     for model_name in sbert_model_names:
-        cache_dir = Path("data/processed_data/sbert-" + model_name)
+        cache_dir = Path("data/processed_data/sbert_cache_tok_" + model_name)
         cache_dir.mkdir(exist_ok=True)
         the_embeddings[model_name] = SpacyVectorEmbedding(
             make_nlp(model_name), 768,
