@@ -117,8 +117,6 @@ def initialize(display_mode="auto"):
 
 def _bokeh_show(root):
     bokeh.io.show(root)
-    #bokeh.io.export_png(root, filename="/Users/arbeit/Desktop/bokeh.png", width=1200)
-    #bokeh.io.export_svg(root, filename="/Users/arbeit/Desktop/bokeh.svg")
 
 
 def make_limited_function_warning_widget(action_text):
@@ -1676,20 +1674,31 @@ class NDCGPlotter:
     def _format_ndcg(self, ndcg):
         return ['%.1f%%' % (x * 100) for x in ndcg]
 
-    def plot_details(self):
-        self.plot(self._phrase, self._ndcg)
+    def _details_plot(self):
+        return self._plot(self._phrase, self._ndcg)
 
-    def plot_summary(self):
+    def _summary_plot(self):
         stat_sym = chr(0x25d2)
         labels = [f"{stat_sym} median", f"{stat_sym} mean"]
         values = [[np.median(x), np.mean(x)] for x in self._ndcg]
-        self.plot(labels, values)
+        return self._plot(labels, values)
+
+    def plot(self):
+        p1 = self._summary_plot()
         
+        l1 = bokeh.layouts.layout([[p1]], sizing_mode='stretch_width')
+        l2 = bokeh.layouts.layout([[self._details_plot()]], sizing_mode='stretch_width')
+        
+        _bokeh_show(bokeh.models.Tabs(tabs=[
+            bokeh.models.Panel(child=l1, title="Summary"),
+            bokeh.models.Panel(child=l2, title="Details")],
+            height=p1.height))
+
     def plot_hist(self):
         palette = self._palette[max(3, len(self._indices))]
                 
         data = {
-            'quantiles': [f"{x * 10}%" for x in range(11)]
+            'bins': [f"{x * 10}%" for x in range(11)]
         }
         
         q = np.linspace(0, 1, 11)
@@ -1703,18 +1712,18 @@ class NDCGPlotter:
         source = bokeh.models.ColumnDataSource(data=data)
         
         p = bokeh.plotting.figure(
-            x_range=data["quantiles"],
+            x_range=data["bins"],
             plot_width=800, plot_height=500,
             toolbar_location=None,
             tools="")
         
         n = len(self._indices)
-        w0 = 0.8 / (n + 1)
-        w1 = 0.8 / n
+        w1 = 0.5 / n
+        w0 = w1 * 0.5
 
         for i, index_name in enumerate(self._index_names):
             p.vbar(
-                x=bokeh.transform.dodge("quantiles", -0.25 + w1 * i, range=p.x_range),
+                x=bokeh.transform.dodge("bins", -0.25 + w1 * i, range=p.x_range),
                 top=index_name, width=w0, color=palette[n - 1 - i], legend_label=index_name, source=source)
             
         p.xgrid.grid_line_color = None
@@ -1724,9 +1733,12 @@ class NDCGPlotter:
         p.legend.location = "top_left"
         p.legend.orientation = "vertical"
 
-        _bokeh_show(p)
+        p.xaxis.axis_label = 'nDCG'
+        p.yaxis.axis_label = 'count'
+
+        _bokeh_show(bokeh.layouts.layout([[p]], sizing_mode='stretch_width'))
     
-    def plot(self, labels, values):
+    def _plot(self, labels, values):
         y = [(x, index_name) for x in labels for index_name in self._index_names[::-1]]
         flat_ndcg = np.transpose(values).flatten()
 
@@ -1768,7 +1780,7 @@ class NDCGPlotter:
             text_font_size='8pt', text_align='right', text_baseline='middle', text_color='white')
         p.add_layout(labels)
 
-        _bokeh_show(p)
+        return p
         
     @property
     def data(self):
