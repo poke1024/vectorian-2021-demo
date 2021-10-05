@@ -25,6 +25,10 @@ import requests
 import codecs
 import textwrap
 import json
+import vectorian
+import yaml
+import shutil
+import urllib
 
 import bokeh.plotting
 import bokeh.models
@@ -146,68 +150,42 @@ def monkey_patch_sentence_transformers_tqdm(desc):
 
 # the following function is adapted from:
 # https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
-def download(url: str, fname: str):
-    resp = requests.get(url, stream=True)
-    total = int(resp.headers.get('content-length', 0))
-    with open(fname, 'wb') as file, tqdm(
-            desc=f"Downloading {url}",
-            total=total,
-            unit='iB',
-            unit_scale=True,
-            unit_divisor=1024,
-    ) as bar:
-        for data in resp.iter_content(chunk_size=1024):
-            size = file.write(data)
-            bar.update(size)
+def download(url: str):
+    cache_path = data_path / "raw_data" / "vectorian_cache"
+    fname = cache_path / urllib.parse.urlparse(url).path.split("/")[-1]
+    
+    if not fname.exists():
+        resp = requests.get(url, stream=True)
+        total = int(resp.headers.get('content-length', 0))
+        with open(fname, 'wb') as file, tqdm(
+                desc=f"Downloading {url}",
+                total=total,
+                unit='iB',
+                unit_scale=True,
+                unit_divisor=1024,
+        ) as bar:
+            for data in resp.iter_content(chunk_size=1024):
+                size = file.write(data)
+                bar.update(size)
+            
+    if fname.suffix == ".zip":
+        if not (cache_path / fname.stem).exists():
+            with zipfile.ZipFile(fname, "r") as zf:
+                zf.extractall(cache_path)
+        
+        return cache_path / fname.stem
+    else:
+        return fname
 
 
-def download_word2vec_embedding(name, url):
-    data_path = Path(f"{name}.zip")
-    if not data_path.exists():
-        download(url, data_path)
-
-    with zipfile.ZipFile(data_path, 'r') as zf:
-        for zi in zf.infolist():
-            if zi.filename[-1] == '/':
-                continue
-
-            data = zf.read(zi)
-
-            return Word2VecVectors(
-                name,
-                io.BytesIO(data),
-                binary=True)
-
-    raise ValueError("zip file is empty")
+    
+NLP_BASE_MODEL = 'en_core_web_sm'
 
 
-def make_nlp(sbert_model_name=None):
+def make_nlp():
     # uses 'tagger' from en_core_web_sm
     # we include 'parser' so that Vectorian can detect sentence boundaries
-    
-    base_model = 'en_core_web_sm'
-
-    nlp = spacy.load(base_model, exclude=['ner'])
-    
-    if sbert_model_name is None:
-        return nlp
-
-    sbert_model_path = sbert_cache_path / f"sentence-transformers_{sbert_model_name}"
-    sbert_model_zip_path = sbert_model_path.parent / (sbert_model_path.name + ".zip")
-
-    if False:
-        if not sbert_model_path.exists() and not sbert_model_zip_path.exists():
-            download(
-                f"https://zenodo.org/record/4923260/files/{sbert_model_name}.zip",
-                sbert_model_zip_path)
-        if not sbert_model_path.is_dir():
-            with zipfile.ZipFile(sbert_model_zip_path, "r") as zf:
-                zf.extractall(sbert_model_path.parent)
-
-    with monkey_patch_sentence_transformers_tqdm("Downloading Sentence BERT model"):
-        nlp.add_pipe('sentence_bert', config={'model_name': sbert_model_name})
-        nlp.meta["name"] = sbert_model_name + "_with_" + base_model
-        return nlp
+    return spacy.load(NLP_BASE_MODEL, exclude=['ner'])
 
 
 GoldV1Source = namedtuple("GoldV1Source", ["work", "author"])
@@ -2601,10 +2579,13 @@ class CustomSearch:
                 return None
 
             im = TextImporter(nlp)
+            
+            temp_corpus_path = data_path / "processed_data" / "temp_corpus"
+            temp_corpus_path.mkdir(exist_ok=True)
 
             from vectorian.corpus import Corpus
             import tempfile
-            corpus = Corpus(tempfile.mkdtemp(prefix="temp_corpus_", dir="data/processed_data/temp_corpus"))
+            corpus = Corpus(tempfile.mkdtemp(prefix="temp_corpus_", dir=temp_corpus_path))
 
             # for each uploaded file, import it via importer "im" and add to corpus
             for k, data in upload.value.items():
@@ -2663,32 +2644,56 @@ def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted
     ])
 
 
-def load_embeddings(sbert_model_names, readonly=True):
-    the_embeddings = {}
+class SentenceTransformersEmbedding(vectorian.embeddings.SpacyVectorEmbedding):
+    def __init__(self, name, path=None, readonly=False):
+        
+        if path is not None:
+            sbert_model_path = sbert_cache_path / f"sentence-transformers_{name}"
+            if not sbert_model_path.exists():
+                shutil.copytree(path, sbert_model_path)
+        
+        nlp = make_nlp()
 
-    the_embeddings["glove"] = Zoo.load("glove-6B-50")
-    the_embeddings["fasttext"] = Zoo.load("fasttext-en-mini")
+        with monkey_patch_sentence_transformers_tqdm("Downloading sentence-transformers model " + name):
+            nlp.add_pipe('sentence_bert', config={'model_name': name})
+            nlp.meta["name"] = name + "_with_" + NLP_BASE_MODEL
+            
+        # we provide an additional cache for token embeddings, which helps
+        # speed up notebook execution in Binder environments.
 
-    if running_inside_binder():  # use precomputed version of Numberbatch?
-        the_embeddings["numberbatch"] = nbutils.download_word2vec_embedding(
-            "data/raw_data/numberbatch-19.08-en-pca-50",
-            "https://zenodo.org/record/4916056/files/numberbatch-19.08-en-pca-50.zip",
-        )
-    else:
-        # The following reduction of full Numberbatch to n=50 only works in envs
-        # with enough memory. For Binder etc. use the Zenodo version above.
-        the_embeddings["numberbatch"] = Zoo.load("numberbatch-19.08-en").pca(50)
-
-    the_embeddings["fasttext_numberbatch"] = StackedEmbedding(
-        [the_embeddings["fasttext"], the_embeddings["numberbatch"]]
-    )
-
-    for model_name in sbert_model_names:
-        cache_dir = Path("data/processed_data/sbert_cache_tok_" + model_name)
+        cache_dir = data_path / "processed_data" / ("sbert_cache_tok_" + name)
         cache_dir.mkdir(exist_ok=True)
-        the_embeddings[model_name] = SpacyVectorEmbedding(
-            make_nlp(model_name), 768,
-            cache=VectorCache(cache_dir, readonly=readonly)
-        )
+
+        super().__init__(
+            nlp, 768,
+            cache=VectorCache(cache_dir, readonly=readonly))
+
+        
+def load_embeddings(yml_path):
+    yml_path = Path(yml_path)
     
-    return the_embeddings
+    with open(yml_path, "r") as f:
+        entries = yaml.safe_load(f.read())
+        
+    embeddings = {}
+        
+    for name, entry in entries.items():
+        url = entry.get("url")
+        path = None
+        if url:
+            path = download(url)
+        
+        constructor = entry["constructor"]
+        args = entry.get("args", {})
+        if path is not None:
+            args["path"] = path
+            
+        if "embeddings" in entry:
+            args["embeddings"] = [embeddings[x] for x in entry["embeddings"]]
+        
+        f = eval(constructor)
+        embedding = f(**args)
+        
+        embeddings[name] = embedding
+        
+    return embeddings

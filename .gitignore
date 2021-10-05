@@ -1,8 +1,9 @@
 .ipynb_checkpoints
 *.pyc
 .DS_Store
-/data/raw_data/vectorian_cache/embeddings
+/data/raw_data/vectorian_cache
 /data/raw_data/sentence_transformers/sentence-transformers*
 /data/raw_data/numberbatch-19.08-en-pca-50.zip
 /data/processed_data/temp_corpus/temp_corpus_*
+/data/processed_data/sbert_cache_tok_*
 /.idea

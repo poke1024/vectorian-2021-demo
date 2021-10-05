@@ -1,0 +1,35 @@
+glove:
+    constructor: vectorian.embeddings.Word2VecVectors
+    args:
+        name: glove
+        binary: true
+    url: https://zenodo.org/record/4925376/files/glove.6B.50d.zip
+
+fasttext:
+    constructor: vectorian.embeddings.CompressedFastTextVectors
+    url: https://zenodo.org/record/4905385/files/fasttext-en-mini
+
+numberbatch:
+    constructor: vectorian.embeddings.Word2VecVectors
+    args:
+        name: numberbatch-50
+        binary: true
+    url: https://zenodo.org/record/4916056/files/numberbatch-19.08-en-pca-50.zip
+
+sbert_paraphrase:
+    constructor: SentenceTransformersEmbedding
+    args:
+        name: paraphrase-distilroberta-base-v1
+    url: https://zenodo.org/record/5550364/files/sentence-transformers_paraphrase-distilroberta-base-v1.zip
+
+sbert_msmarco:
+    constructor: SentenceTransformersEmbedding
+    args:
+        name: msmarco-distilbert-base-v4
+    url: https://zenodo.org/record/5550364/files/sentence-transformers_msmarco-distilbert-base-v4.zip
+
+fasttext_numberbatch:
+    constructor: vectorian.embeddings.StackedEmbedding
+    embeddings:
+        - fasttext
+        - numberbatch
