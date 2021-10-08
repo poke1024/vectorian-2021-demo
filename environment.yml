@@ -24,6 +24,7 @@ dependencies:
   - sentencepiece==0.1.95
   - networkx==2.6.2
   - pygraphviz==1.7
+  - faiss=1.7.0
   - pip
   - pip:
       - vectorian==0.9.13
