@@ -76,6 +76,10 @@ from vectorian.embeddings import SpacyVectorEmbedding, VectorCache
 from vectorian.embeddings import CachedPartitionEncoder, SpanEncoder
 
 
+import warnings
+warnings.simplefilter("ignore")
+
+
 class DisplayMode(enum.Enum):
     SERVER = (True, False)
     BINDER = (False, False)
