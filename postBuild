@@ -1,0 +1,5 @@
+#!/bin/bash
+# attempting to fix jp_proxy_widget under JupyterLab on mybinder.org
+
+jupyter labextension install @jupyter-widgets/jupyterlab-manager  --no-build
+jupyter labextension install jp_proxy_widget
