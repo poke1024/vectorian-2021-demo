@@ -1,4 +1,4 @@
-# “Embed, embed! There’s knocking at the gate." - Detecting Intertextuality with the Vectorian Notebook of Embeddings
+# “Embed, embed! There’s knocking at the gate.” - Detecting Intertextuality with Embeddings and the Vectorian
 
 # Abstract
 
