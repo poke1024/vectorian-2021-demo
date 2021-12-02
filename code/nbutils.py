@@ -68,11 +68,11 @@ from vectorian.embeddings import CachedPartitionEncoder
 from vectorian.embeddings import StackedEmbedding
 from vectorian.embeddings import Zoo
 from vectorian.index import DummyIndex
-from vectorian.metrics import TokenSimilarity, CosineSimilarity
+from vectorian.metrics import TokenSim, CosineSim
 from vectorian.interact import PartitionMetricWidget
 from vectorian.importers import TextImporter
 from vectorian.session import LabSession
-from vectorian.embeddings import SpacyVectorEmbedding, VectorCache
+from vectorian.embeddings import SpacyEmbedding, VectorCache
 from vectorian.embeddings import CachedPartitionEncoder, SpanEncoder
 
 
@@ -1352,9 +1352,9 @@ class DocEmbeddingExplorer:
         
 class TokenSimilarityPlotter:
     def _create_data(self, doc, ref_token, embedding):        
-        token_sim = TokenSimilarity(
+        token_sim = TokenSim(
             self._session.embeddings[embedding].factory,
-            CosineSimilarity())
+            CosineSim())
         sim = partial(self._session.similarity, token_sim)
         is_ctx = any(e.is_contextual for e in token_sim.embeddings)
         
@@ -2648,7 +2648,7 @@ def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted
     ])
 
 
-class SentenceTransformersEmbedding(vectorian.embeddings.SpacyVectorEmbedding):
+class SentenceTransformersEmbedding(vectorian.embeddings.SpacyEmbedding):
     def __init__(self, name, path=None, readonly=False):
         
         if path is not None:
