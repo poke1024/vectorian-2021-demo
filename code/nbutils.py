@@ -63,8 +63,8 @@ if os.environ.get("VECTORIAN_DEV"):
     sys.path.append(str(vectorian_path))
     import vectorian
 
-from vectorian.embeddings import Word2VecVectors, TokenEmbeddingAggregator, prepare_docs
-from vectorian.embeddings import CachedPartitionEncoder
+from vectorian.embeddings import Word2VecVectors, AggSpanEmbedding, prepare_docs
+from vectorian.embeddings import CachedSpanEncoder, TextEmbedding
 from vectorian.embeddings import StackedEmbedding
 from vectorian.embeddings import Zoo
 from vectorian.index import DummyIndex
@@ -73,7 +73,6 @@ from vectorian.interact import PartitionMetricWidget
 from vectorian.importers import TextImporter
 from vectorian.session import LabSession
 from vectorian.embeddings import SpacyEmbedding, VectorCache
-from vectorian.embeddings import CachedPartitionEncoder, SpanEncoder
 
 
 import warnings
@@ -534,8 +533,8 @@ class DocEncoder:
         k = self.name
 
         # create an encoder that basically calls nlp(t).vector
-        self._encoder = CachedPartitionEncoder(
-            SpanEncoder(lambda texts: [nlp(t).vector for t in texts])
+        self._encoder = CachedSpanEncoder(
+            TextEmbedding(lambda texts: [nlp(t).vector for t in texts])
         )
 
         # compute encodings and/or save cached data
@@ -701,8 +700,8 @@ class DocEmbedder:
             return option.doc_encoder.encoder
         else:
             agg = getattr(np, self._aggregator.value)
-            return CachedPartitionEncoder(
-                TokenEmbeddingAggregator(option.token_embedding.factory, agg))
+            return CachedSpanEncoder(
+                AggSpanEmbedding(option.token_embedding.factory, agg))
  
     @property
     def partition(self):
