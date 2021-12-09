@@ -29,6 +29,7 @@ import vectorian
 import yaml
 import shutil
 import urllib
+import re
 
 import bokeh.plotting
 import bokeh.models
@@ -66,6 +67,7 @@ if os.environ.get("VECTORIAN_DEV"):
 from vectorian.embedding import Word2VecVectors, AggregatedTokenEmbedding
 from vectorian.embedding import SpacyTokenEmbedding, SpacySpanEmbedding
 from vectorian.embedding import StackedEmbedding
+from vectorian.embedding.encoder import CachedSpanEncoder
 from vectorian.embedding.zoo import Zoo
 from vectorian.embedding.encoder import prepare_docs
 from vectorian.index import DummyIndex
@@ -382,9 +384,11 @@ def format_embedding_name(name):
 
     
 def find_index_by_filter(terms, s):
+    pattern = "(.*)".join([""] + [re.escape(x) for x in s.split()] + [""])
+    
     candidates = []
     for i, x in enumerate(terms):
-        if s in x:
+        if re.search(pattern, x):
             candidates.append((i, x))
     if not candidates:
         raise ValueError(f"did not find '{s}' in {terms}")
@@ -533,15 +537,9 @@ class DocEncoder:
         
         k = self.name
 
-        # create an encoder that basically calls nlp(t).vector
         self._encoder = CachedSpanEncoder(
-            TextEmbedding(lambda texts: [nlp(t).vector for t in texts])
-        )
-
-        # compute encodings and/or save cached data
-        self._encoder.try_load("data/processed_data/sbert_cache_doc_" + k)
-        self._encoder.cache(session.documents, session.partition("document"))
-        self._encoder.save("data/processed_data/sbert_cache_doc_" + k)
+            session.partition("document"),
+            SpacySpanEmbedding(nlp))
 
     @property
     def name(self):
@@ -684,9 +682,9 @@ class DocEmbedder:
     @property
     def widget(self):       
         if _display_mode.bokeh:
-            return bokeh.layouts.row(self._embedding_select, self._aggregator)
+            return bokeh.layouts.column(self._embedding_select, self._aggregator)
         else:
-            return widgets.HBox([self._embedding_select, self._aggregator])
+            return widgets.VBox([self._embedding_select, self._aggregator])
     
     def display(self):
         if _display_mode.bokeh:
@@ -702,6 +700,7 @@ class DocEmbedder:
         else:
             agg = getattr(np, self._aggregator.value)
             return CachedSpanEncoder(
+                self._partition,
                 AggregatedTokenEmbedding(option.token_embedding.factory, agg))
  
     @property
@@ -719,7 +718,7 @@ class DocEmbedder:
             nlp = self._nlp
             
         return self.encoder.encode(
-            prepare_docs(docs, nlp), self.partition).unmodified
+            prepare_docs(docs, nlp)).unmodified
     
 
 class EmbeddingPlotter:    
@@ -1015,7 +1014,7 @@ class EmbeddingPlotter:
             if tok_emb_p is None:
                 return
             
-            embedding = self._embedder.encoder.embedding
+            embedding = self._embedder.encoder.token_embedding
             if embedding is None:
                 clear_token_plot()
                 set_tok_emb_status("No token embedding.")
