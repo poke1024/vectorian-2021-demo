@@ -63,16 +63,17 @@ if os.environ.get("VECTORIAN_DEV"):
     sys.path.append(str(vectorian_path))
     import vectorian
 
-from vectorian.embeddings import Word2VecVectors, AggSpanEmbedding, prepare_docs
-from vectorian.embeddings import CachedSpanEncoder, TextEmbedding
-from vectorian.embeddings import StackedEmbedding
-from vectorian.embeddings import Zoo
+from vectorian.embedding import Word2VecVectors, AggregatedTokenEmbedding
+from vectorian.embedding import SpacyTokenEmbedding, SpacySpanEmbedding
+from vectorian.embedding import StackedEmbedding
+from vectorian.embedding.zoo import Zoo
+from vectorian.embedding.encoder import prepare_docs
 from vectorian.index import DummyIndex
-from vectorian.metrics import TokenSim, CosineSim
+from vectorian.sim.token import EmbeddingTokenSim
+from vectorian.sim.vector import CosineSim
 from vectorian.interact import PartitionMetricWidget
 from vectorian.importers import TextImporter
 from vectorian.session import LabSession
-from vectorian.embeddings import SpacyEmbedding, VectorCache
 
 
 import warnings
@@ -701,7 +702,7 @@ class DocEmbedder:
         else:
             agg = getattr(np, self._aggregator.value)
             return CachedSpanEncoder(
-                AggSpanEmbedding(option.token_embedding.factory, agg))
+                AggregatedTokenEmbedding(option.token_embedding.factory, agg))
  
     @property
     def partition(self):
@@ -1351,7 +1352,7 @@ class DocEmbeddingExplorer:
         
 class TokenSimilarityPlotter:
     def _create_data(self, doc, ref_token, embedding):        
-        token_sim = TokenSim(
+        token_sim = EmbeddingTokenSim(
             self._session.embeddings[embedding].factory,
             CosineSim())
         sim = partial(self._session.similarity, token_sim)
@@ -2647,7 +2648,7 @@ def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted
     ])
 
 
-class SentenceTransformersEmbedding(vectorian.embeddings.SpacyEmbedding):
+class SentenceTransformersEmbedding(SpacyTokenEmbedding):
     def __init__(self, name, path=None, readonly=False):
         
         if path is not None:
@@ -2660,16 +2661,8 @@ class SentenceTransformersEmbedding(vectorian.embeddings.SpacyEmbedding):
         with monkey_patch_sentence_transformers_tqdm("Downloading sentence-transformers model " + name):
             nlp.add_pipe('sentence_bert', config={'model_name': name})
             nlp.meta["name"] = name + "_with_" + NLP_BASE_MODEL
-            
-        # we provide an additional cache for token embeddings, which helps
-        # speed up notebook execution in Binder environments.
-
-        cache_dir = data_path / "processed_data" / ("sbert_cache_tok_" + name)
-        cache_dir.mkdir(exist_ok=True)
-
-        super().__init__(
-            nlp, 768,
-            cache=VectorCache(cache_dir, readonly=readonly))
+    
+        super().__init__(nlp)
 
         
 def load_embeddings(yml_path):
