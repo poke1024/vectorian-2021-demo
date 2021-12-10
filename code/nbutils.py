@@ -64,12 +64,11 @@ if os.environ.get("VECTORIAN_DEV"):
     sys.path.append(str(vectorian_path))
     import vectorian
 
-from vectorian.embedding import Word2VecVectors, AggregatedTokenEmbedding
-from vectorian.embedding import SpacyTokenEmbedding, SpacySpanEmbedding
+from vectorian.embedding import Word2VecVectors
+from vectorian.embedding import ContextualEmbedding, SentenceEmbedding
 from vectorian.embedding import StackedEmbedding
-from vectorian.embedding.encoder import CachedSpanEncoder
 from vectorian.embedding.zoo import Zoo
-from vectorian.embedding.encoder import prepare_docs
+from vectorian.embedding.span import prepare_docs
 from vectorian.index import DummyIndex
 from vectorian.sim.token import EmbeddingTokenSim
 from vectorian.sim.vector import CosineSim
@@ -532,14 +531,13 @@ class DocEncoder:
     def __init__(self, embedding, session):
         assert embedding.is_contextual
 
-        nlp = embedding._nlp
+        nlp = embedding.nlp
         self._nlp = nlp
         
         k = self.name
 
-        self._encoder = CachedSpanEncoder(
-            session.partition("document"),
-            SpacySpanEmbedding(nlp))
+        self._encoder = SentenceEmbedding(nlp).create_encoder(
+            session.partition("document"))
 
     @property
     def name(self):
@@ -585,10 +583,10 @@ class DocEmbedder:
 
         self._partition = session.partition("document")
         
-        Option = collections.namedtuple("Option", ["name", "token_embedding", "doc_encoder"])
+        Option = collections.namedtuple("Option", ["name", "token_encoder", "doc_encoder"])
         
         options = []
-        for k, v in self._session.embeddings.items():
+        for k, v in self._session.encoders.items():
             options.append(Option(format_embedding_name(k) + " [token]", v, None))
         for k, v in doc_encoders.items():
             options.append(Option(format_embedding_name(k) + " [doc]", None, v))
@@ -657,7 +655,7 @@ class DocEmbedder:
             cb()
 
     def embedding_changed(self):
-        visible = self.option.token_embedding is not None
+        visible = self.option.token_encoder is not None
         if _display_mode.bokeh:
             self._aggregator.visible = visible
         else:
@@ -699,9 +697,7 @@ class DocEmbedder:
             return option.doc_encoder.encoder
         else:
             agg = getattr(np, self._aggregator.value)
-            return CachedSpanEncoder(
-                self._partition,
-                AggregatedTokenEmbedding(option.token_embedding.factory, agg))
+            return option.token_encoder.embedding.to_sentence_embedding(agg).create_encoder(self._partition)
  
     @property
     def partition(self):
@@ -718,7 +714,7 @@ class DocEmbedder:
             nlp = self._nlp
             
         return self.encoder.encode(
-            prepare_docs(docs, nlp)).unmodified
+            prepare_docs(docs, nlp))
     
 
 class EmbeddingPlotter:    
@@ -883,7 +879,7 @@ class EmbeddingPlotter:
         self._pw.js_init("\n".join(script_code))
                 
     def mk_plot(self, bokeh_doc, selection=[], locator=None, plot_width=1200):
-        has_tok_emb = self._embedder.option.token_embedding is not None
+        has_tok_emb = self._embedder.option.token_encoder is not None
         
         if _display_mode.bokeh:
             intruder_select = bokeh.models.Select(
@@ -1352,7 +1348,7 @@ class DocEmbeddingExplorer:
 class TokenSimilarityPlotter:
     def _create_data(self, doc, ref_token, embedding):        
         token_sim = EmbeddingTokenSim(
-            self._session.embeddings[embedding].factory,
+            self._session.encoders[embedding].embedding,
             CosineSim())
         sim = partial(self._session.similarity, token_sim)
         is_ctx = any(e.is_contextual for e in token_sim.embeddings)
@@ -1431,7 +1427,7 @@ class TokenSimilarityPlotter:
         self._gold = gold
 
         self._doc_id_to_doc = dict((get_gold_id(x), x) for x in self._session.documents)
-        self._embedding_names = sorted(session.embeddings.keys(), key=lambda x: len(x))
+        self._embedding_names = sorted(session.encoders.keys(), key=lambda x: len(x))
         
         if initial_occ is None:
             initial_occ_id = get_gold_id(gold.occurrences[0])
@@ -1439,7 +1435,7 @@ class TokenSimilarityPlotter:
             initial_occ_id = get_gold_id(initial_occ)
         
         self._figures = None
-        self._n_figures = min(n_figures, len(session.embeddings))
+        self._n_figures = min(n_figures, len(session.encoders))
         self._height_per_token = 20
         self._top_n = top_n
         
@@ -1824,8 +1820,8 @@ class InteractiveQuery:
         return self._session.partition("document").index(self._ui.make(), self._nlp)
     
     @property
-    def ordered_embedding(self):
-        return sorted(list(self._session.embeddings.items()), key=lambda x: x[0])
+    def ordered_encoders(self):
+        return sorted(list(self._session.encoders.items()), key=lambda x: x[0])
 
         
 class InteractiveIndexBuilder:
@@ -2647,7 +2643,7 @@ def eval_strategies(data, gold_data, strategies=["wsb_weighted", "wsb_unweighted
     ])
 
 
-class SentenceTransformersEmbedding(SpacyTokenEmbedding):
+class SentenceTransformersEmbedding(ContextualEmbedding):
     def __init__(self, name, path=None, readonly=False):
         
         if path is not None:
@@ -2662,6 +2658,11 @@ class SentenceTransformersEmbedding(SpacyTokenEmbedding):
             nlp.meta["name"] = name + "_with_" + NLP_BASE_MODEL
     
         super().__init__(nlp)
+        self._nlp = nlp
+        
+    @property
+    def nlp(self):
+        return self._nlp
 
         
 def load_embeddings(yml_path):
