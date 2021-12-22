@@ -30,6 +30,7 @@ import yaml
 import shutil
 import urllib
 import re
+import logging
 
 import bokeh.plotting
 import bokeh.models
@@ -96,6 +97,7 @@ class DisplayMode(enum.Enum):
     
 
 _display_mode = DisplayMode.EXPORT
+_export_cells = False
 
 def default_plot_width():
     if _display_mode.static:
@@ -108,8 +110,8 @@ def running_inside_binder():
     return os.environ.get("BINDER_SERVICE_HOST") is not None
 
     
-def initialize(display_mode="auto"):
-    global _display_mode
+def initialize(display_mode="auto", export=False):
+    global _display_mode, _export_cells
     if display_mode == "auto":
         _display_mode = DisplayMode.BINDER if running_inside_binder() else DisplayMode.SERVER
     else:
@@ -122,10 +124,26 @@ def initialize(display_mode="auto"):
             [f"localhost:{port}" for port in range(8888, 8898)])
     
     bokeh.io.output_notebook()
+    _export_cells = export
         
+        
+def _export_path():
+    plot_path = data_path / "plots"
+    plot_path.mkdir(exist_ok=True)
+    return plot_path
 
-def _bokeh_show(root):
-    bokeh.io.show(root)
+
+def _bokeh_show(plot):
+    if _export_cells:
+        from bokeh.io import export_svg, export_png
+        plot_path = _export_path()
+        try:
+            export_png(plot, filename=plot_path / "plot.png", width=1200, height=800)
+            export_svg(plot, filename=plot_path / "plot.svg")
+        except:
+            pass
+
+    bokeh.io.show(plot)
 
 
 def make_limited_function_warning_widget(action_text):
@@ -686,7 +704,7 @@ class DocEmbedder:
     
     def display(self):
         if _display_mode.bokeh:
-            bokeh.io.show(lambda doc: doc.add_root(self.widget))
+            _bokeh_show(lambda doc: doc.add_root(self.widget))
         else:
             display(self.widget)
             
@@ -1315,12 +1333,12 @@ def plot_doc_embeddings(embedder_factory, gold, plot_args):
             return bokeh.layouts.row(widgets)
 
         if _display_mode.static:
-            bokeh.io.show(mk_root(None))
+            _bokeh_show(mk_root(None))
         else:
             def add_root(bokeh_doc):
                 bokeh_doc.add_root(mk_root(bokeh_doc))
 
-            bokeh.io.show(add_root)
+            _bokeh_show(add_root)
     else:
         plots = [
             plotter.mk_plot(None, plot_width=plot_width, **clean_kwargs(kwargs))
@@ -1544,7 +1562,7 @@ class TokenSimilarityPlotter:
                     bokeh.layouts.column(x['embedding_select'], x['figure']) for x in self._figures]))
                         
             if _display_mode.static:
-                bokeh.io.show(root)
+                _bokeh_show(root)
             else:
                 bokeh_doc.add_root(root)
             
@@ -1565,7 +1583,7 @@ def plot_token_similarity(session, nlp, gold, token="high", occ=None, n_figures=
     gold = to_legacy_gold(gold)
     plotter = TokenSimilarityPlotter(session, nlp, gold, token, occ, n_figures=n_figures, top_n=top_n)
     if _display_mode.fully_interactive:
-        bokeh.io.show(plotter.create)
+        _bokeh_show(plotter.create)
     else:
         plotter.create(None)
     
@@ -2019,9 +2037,9 @@ def plot_results(gold, index, query=None, rank=None, plot_height=200):
     bk_root = bokeh.layouts.row(*bks)
     
     if _display_mode.fully_interactive:
-        bokeh.io.show(lambda doc: doc.add_root(bk_root))
+        _bokeh_show(lambda doc: doc.add_root(bk_root))
     else:
-        bokeh.io.show(bk_root)
+        _bokeh_show(bk_root)
 
     result_widgets = [widgets.HBox(jps, layout=widgets.Layout(width=f'{plot_width}px'))] if len(jps) > 1 else jps[:1]
     if not _display_mode.fully_interactive:
@@ -2137,7 +2155,7 @@ def plot_gold(gold, title=""):
             x_start=u[0], y_start=u[1],
             x_end=v[0], y_end=v[1], line_width=1.5))
 
-    bokeh.io.show(plot)
+    _bokeh_show(plot)
     
 
 def get_token_scores_s(match):
@@ -2298,7 +2316,7 @@ def token_scores_stacked_bar_chart(matches, ranks=None, highlight=None, show_gap
             y.append(scores[i - 1] + 0.05)    
         p.triangle(color="black", x=x, y=y, size=10, angle=np.pi)
     
-    bokeh.io.show(p)
+    _bokeh_show(p)
     
     
 def token_scores_pie_chart(match, plot_size=350):
@@ -2407,7 +2425,7 @@ def vis_token_scores(matches, kind="bar", ranks=None, highlight=None, plot_width
         n_rows = int(np.ceil(len(picked) / n_cols))
         plot_size = plot_width // n_cols
         figures = [token_scores_pie_chart(m, plot_size=plot_size) for m in picked]
-        bokeh.io.show(bokeh.layouts.gridplot(
+        _bokeh_show(bokeh.layouts.gridplot(
             figures, ncols=n_cols, width=plot_size, height=plot_size * n_rows))
     else:
         raise ValueError(kind)
@@ -2462,7 +2480,7 @@ def plot_embedding_vectors(labels, vectors, palette, bg, extra_height=0, w_forma
         color_mapper=color_mapper, label_standoff=3, margin=20, height=5, padding=5)
     p.add_layout(color_bar, 'below')
     
-    bokeh.io.show(p)
+    _bokeh_show(p)
     
     
 def _embedding_vectors(words, get_vec, normalize):
@@ -2546,9 +2564,12 @@ def plot_dot(dot_path):
     with open(dot_path, "r") as f:
         graphs = pydot.graph_from_dot_data(f.read())
     graph = graphs[0]
-
+    
+    if _export_cells:
+        with open(_export_path() / "plot.svg", "wb") as f:
+            f.write(graph.create_svg())
+        
     from IPython.display import SVG
-
     return SVG(graph.create_svg())
 
 
@@ -2582,15 +2603,20 @@ class CustomSearch:
             temp_corpus_path = data_path / "processed_data" / "temp_corpus"
             temp_corpus_path.mkdir(exist_ok=True)
 
-            from vectorian.corpus import Corpus
-            import tempfile
-            corpus = Corpus(tempfile.mkdtemp(prefix="temp_corpus_", dir=temp_corpus_path))
+            from vectorian.corpus import TemporaryCorpus
+            corpus = TemporaryCorpus()
 
             # for each uploaded file, import it via importer "im" and add to corpus
             for k, data in upload.value.items():
-                corpus.add_doc(
-                    im(codecs.decode(data["content"], encoding="utf-8"), title=k)
-                )
+                doc = im(codecs.decode(data["content"], encoding="utf-8"), title=k)
+                if doc is not None:
+                    corpus.add_doc(doc)
+                else:
+                    logging.warn(f"document '{k}' is empty and was ignored.")
+                    
+            if len(corpus) < 1:
+                display(HTML("<strong>all provided text files were empty.</strong>"))
+                return None                
 
             self._session = LabSession(
                 corpus,

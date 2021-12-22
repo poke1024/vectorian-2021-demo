@@ -27,7 +27,7 @@ dependencies:
   - faiss=1.7.0
   - pip
   - pip:
-      - vectorian==0.9.15
+      - vectorian==1.0a1
       - pybind11==2.6.2
       - gensim>=3.8.3, <4.0.0
       - jupyter_bokeh==3.0.2
