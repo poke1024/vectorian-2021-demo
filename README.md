@@ -17,9 +17,8 @@ The detection of intertextual references in text corpora is a digital humanities
 +--  data
 |    +-- processed_data
 |    |   +-- corpus: preprocessed Vectorian document data for parts of gold.json (e.g. tokenization)
-|    |   +-- doc_embeddings.*: precomputed Sentence-BERT document embeddings for parts of gold.json
-|    |   +-- sbert_contextual: precomputed Sentence-BERT contextual token embeddings for pattern phrases
 |    +-- raw_data
+|    |   +-- embeddings.yml: specifies which embeddings are used and from where they are loaded
 |    |   +-- gold.json: gold standard data for Shakespeare text reuse as JSON 
 |    |   +-- sentence_transformers: will contain S-BERT model (downloaded in the notebook)
 |    |   +-- vectorian_cache: will contain word embedding data (downloaded in the notebook)
