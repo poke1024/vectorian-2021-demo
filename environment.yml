@@ -19,7 +19,6 @@ dependencies:
   - onnxruntime==1.7.2
   - h5py==2.10.0
   - pyyaml==5.4.1
-  - tokenizers==0.10.3
   - sentence-transformers==2.0.0
   - sentencepiece==0.1.95
   - networkx==2.6.2
@@ -38,3 +37,4 @@ dependencies:
       - jp_proxy_widget==1.0.10
       - pydot==1.4.2
       - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0-py3-none-any.whl
+      - tokenizers==0.11.6
